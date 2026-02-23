@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MarketEdge — Watchlist Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #131722;
+  --bg2:      #1a1f2e;
+  --bg3:      #1e2438;
+  --bg4:      #222840;
+  --bg5:      #272e46;
+  --accent:   #2962FF;
+  --acc-glow: rgba(41,98,255,.18);
+  --acc-dim:  rgba(41,98,255,.08);
+  --text:     #D1D4DC;
+  --text2:    #8892a4;
+  --text3:    #4d5a70;
+  --border:   #252d3d;
+  --border2:  #2e3a52;
+  --green:    #26a69a;
+  --green-bg: rgba(38,166,154,.12);
+  --green-bd: rgba(38,166,154,.28);
+  --red:      #ef5350;
+  --red-bg:   rgba(239,83,80,.12);
+  --red-bd:   rgba(239,83,80,.28);
+  --yellow:   #f0b429;
+  --nav-h:    56px;
+  --sb-w:     220px;
+  --left-w:   260px;
+  --detail-w: 360px;
+  --r:        10px;
+  --r2:       8px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideInRight{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideInLeft{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:translateX(0)}}
+@keyframes popIn{0%{transform:scale(.92);opacity:0}60%{transform:scale(1.03)}100%{transform:scale(1);opacity:1}}
+@keyframes pulse-dot{0%,100%{box-shadow:0 0 0 0 rgba(38,166,154,.6)}70%{box-shadow:0 0 0 6px transparent}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* NAVBAR */
+.navbar{position:fixed;top:0;left:0;right:0;height:var(--nav-h);background:rgba(26,31,46,.96);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;z-index:300;gap:14px}
+.nav-logo{font-size:20px;font-weight:800;color:#fff;letter-spacing:-.5px;display:flex;align-items:center;gap:8px;white-space:nowrap;text-decoration:none}
+.nav-mark{width:26px;height:26px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff;flex-shrink:0}
+.nav-logo em{color:var(--accent);font-style:normal}
+.nav-links{display:flex;gap:2px;margin-left:12px}
+.nav-link{padding:6px 13px;border-radius:6px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;transition:.18s;text-decoration:none;white-space:nowrap}
+.nav-link:hover{color:var(--text);background:var(--bg3)}
+.nav-link.active{color:#fff;background:var(--accent)}
+.nav-spacer{flex:1}
+.nav-right{display:flex;align-items:center;gap:8px}
+.live-chip{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);border-radius:5px;padding:3px 9px;font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:600;display:flex;align-items:center;gap:5px}
+.live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse-dot 2s infinite}
+.nav-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;cursor:pointer;border:2px solid transparent;transition:.2s}
+.nav-avatar:hover{border-color:var(--accent)}
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px}
+.hamburger span{width:20px;height:1.5px;background:var(--text2);border-radius:2px;transition:.3s}
+
+/* SIDEBAR */
+.sidebar{position:fixed;top:var(--nav-h);left:0;width:var(--sb-w);height:calc(100vh - var(--nav-h));background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:transform .3s ease;z-index:200;overflow-y:auto}
+.sidebar.collapsed{transform:translateX(-100%)}
+.sb-section{padding:18px 14px 6px;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);text-transform:uppercase}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:var(--r2);cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);transition:.16s;text-decoration:none;position:relative}
+.sb-item:hover{color:var(--text);background:var(--bg3)}
+.sb-item.active{color:#fff;background:rgba(41,98,255,.14)}
+.sb-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--accent);border-radius:0 3px 3px 0}
+.sb-icon{font-size:14px;width:18px;text-align:center}
+.sb-footer{margin-top:auto;padding:12px;border-top:1px solid var(--border)}
+.collapse-btn{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;cursor:pointer;color:var(--text2);font-size:12px;transition:.18s}
+.collapse-btn:hover{background:var(--bg3);color:var(--text)}
+
+/* APP SHELL */
+.app{margin-top:var(--nav-h);margin-left:var(--sb-w);transition:margin-left .3s ease;min-height:calc(100vh - var(--nav-h));display:flex;flex-direction:column}
+.app.sb-collapsed{margin-left:0}
+.page-body{display:flex;flex:1;overflow:hidden;position:relative}
+
+/* LEFT PANEL */
+.left-panel{width:var(--left-w);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;height:calc(100vh - var(--nav-h));overflow:hidden;position:sticky;top:var(--nav-h)}
+.left-header{padding:16px 16px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.left-title{font-size:13px;font-weight:700;color:#fff}
+.add-wl-btn{width:28px;height:28px;border-radius:7px;background:var(--acc-dim);border:1px solid var(--acc-glow);color:var(--accent);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.18s;font-weight:300;line-height:1;flex-shrink:0}
+.add-wl-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.wl-tabs{display:flex;flex-direction:column;gap:2px;padding:8px;flex:1;overflow-y:auto}
+.wl-tab{display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:var(--r2);cursor:pointer;transition:.16s;border:1px solid transparent;position:relative}
+.wl-tab:hover{background:var(--bg3);border-color:var(--border)}
+.wl-tab.active{background:var(--acc-dim);border-color:rgba(41,98,255,.3)}
+.wl-tab-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;transition:.16s}
+.wl-tab.active .wl-tab-icon{background:var(--accent)}
+.wl-tab:not(.active) .wl-tab-icon{background:var(--bg4)}
+.wl-tab-info{flex:1;min-width:0}
+.wl-tab-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wl-tab.active .wl-tab-name{color:#fff}
+.wl-tab-sub{font-size:10px;color:var(--text2);margin-top:2px;font-family:'JetBrains Mono',monospace}
+.wl-badge{background:var(--bg4);border:1px solid var(--border);color:var(--text2);border-radius:12px;padding:2px 7px;font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:600;flex-shrink:0}
+.wl-tab.active .wl-badge{background:rgba(41,98,255,.25);border-color:rgba(41,98,255,.4);color:var(--accent)}
+.wl-tab-del{width:22px;height:22px;border-radius:4px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0;opacity:0}
+.wl-tab:hover .wl-tab-del{opacity:1}
+.wl-tab-del:hover{color:var(--red);background:var(--red-bg)}
+.left-stats{padding:12px 16px;border-top:1px solid var(--border)}
+.left-stat{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0}
+.ls-label{color:var(--text2)}
+.ls-val{font-family:'JetBrains Mono',monospace;font-weight:700;color:#fff}
+.ls-val.green{color:var(--green)}
+.ls-val.red{color:var(--red)}
+
+/* MAIN PANEL */
+.main-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;transition:all .3s ease}
+.main-header{padding:14px 18px 12px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
+.main-wl-title{font-size:18px;font-weight:800;color:#fff;letter-spacing:-.3px}
+.main-wl-badge{font-size:12px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:3px 9px;color:var(--text2)}
+.main-spacer{flex:1}
+.sort-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-family:'Syne',sans-serif;font-weight:600;transition:.16s}
+.sort-btn:hover{border-color:var(--accent);color:var(--accent)}
+.search-wrap{padding:10px 14px;border-bottom:1px solid var(--border);position:relative;flex-shrink:0}
+.search-inner{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);padding:9px 14px;transition:.18s}
+.search-inner:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--acc-glow)}
+.search-icon{color:var(--text3);font-size:16px;flex-shrink:0}
+.search-input{background:none;border:none;outline:none;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;flex:1;min-width:0}
+.search-input::placeholder{color:var(--text3)}
+.search-kbd{background:var(--bg4);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text3);white-space:nowrap}
+.autocomplete-dd{position:absolute;top:calc(100% - 2px);left:14px;right:14px;z-index:60;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);box-shadow:0 12px 32px rgba(0,0,0,.5);overflow:hidden;display:none}
+.autocomplete-dd.open{display:block;animation:fadeUp .15s ease}
+.ac-header{padding:7px 14px;font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--bg3)}
+.ac-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;transition:.12s;border-bottom:1px solid rgba(37,45,61,.4)}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover{background:var(--bg3)}
+.ac-sym{font-weight:700;font-size:13px;color:#fff;font-family:'JetBrains Mono',monospace;min-width:90px}
+.ac-name{font-size:11px;color:var(--text2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ac-price{font-family:'JetBrains Mono',monospace;font-size:12px;text-align:right;flex-shrink:0}
+.ac-chg-val{font-size:10px;font-family:'JetBrains Mono',monospace}
+.ac-add{color:var(--accent);font-size:16px;opacity:0;transition:.12s;flex-shrink:0}
+.ac-item:hover .ac-add{opacity:1}
+.wl-items{flex:1;overflow-y:auto;padding:6px 0}
+.stock-card{display:flex;align-items:center;gap:0;padding:0 8px;margin:2px 8px;border-radius:var(--r2);cursor:pointer;border:1px solid transparent;transition:.15s;position:relative;animation:slideInLeft .22s ease both}
+.stock-card:hover{background:var(--bg3);border-color:var(--border)}
+.stock-card.active{background:var(--acc-dim);border-color:rgba(41,98,255,.25)}
+.drag-handle{display:flex;flex-direction:column;gap:3px;cursor:grab;padding:14px 5px 14px 2px;opacity:0;transition:.13s;flex-shrink:0}
+.stock-card:hover .drag-handle{opacity:1}
+.drag-handle span{width:12px;height:1.5px;background:var(--text3);border-radius:2px;display:block}
+.move-arrows{display:flex;flex-direction:column;gap:1px;padding:0 2px;opacity:0;transition:.13s;flex-shrink:0}
+.stock-card:hover .move-arrows{opacity:1}
+.move-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:9px;line-height:1;padding:2px 3px;transition:.13s}
+.move-btn:hover{color:var(--accent)}
+.move-btn:disabled{opacity:.2;cursor:default}
+.stock-body{flex:1;display:flex;align-items:center;gap:8px;padding:10px 4px;min-width:0}
+.stock-info{flex:1;min-width:0}
+.stock-sym{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:#fff;letter-spacing:.3px}
+.stock-name{font-size:10px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
+.stock-nums{text-align:right;flex-shrink:0;min-width:82px}
+.stock-ltp{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:#fff}
+.stock-chg{font-family:'JetBrains Mono',monospace;font-size:10px;margin-top:2px}
+.stock-chg.pos{color:var(--green)}
+.stock-chg.neg{color:var(--red)}
+.sparkline-wrap{width:54px;flex-shrink:0;padding:0 4px}
+.sparkline-wrap svg{overflow:visible}
+.card-actions{display:flex;flex-direction:column;gap:3px;opacity:0;transition:.13s;padding:0 3px;flex-shrink:0}
+.stock-card:hover .card-actions{opacity:1}
+.card-act-btn{width:26px;height:26px;border-radius:5px;background:none;border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:.13s}
+.card-act-btn:hover.eye{border-color:var(--accent);color:var(--accent);background:var(--acc-dim)}
+.card-act-btn:hover.trash{border-color:var(--red);color:var(--red);background:var(--red-bg)}
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;text-align:center;animation:fadeUp .4s ease}
+.empty-art{width:100px;height:100px;margin:0 auto 20px;opacity:.35}
+.empty-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px}
+.empty-sub{font-size:12px;color:var(--text2);line-height:1.6;max-width:200px}
+.wl-bottom{padding:10px 16px;border-top:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.wl-count-label{font-size:11px;color:var(--text2)}
+.wl-count-label strong{color:var(--text);font-family:'JetBrains Mono',monospace}
+.wl-limit{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+
+/* DETAIL PANEL */
+.detail-panel{width:0;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .3s cubic-bezier(.4,0,.2,1);flex-shrink:0;height:calc(100vh - var(--nav-h));position:sticky;top:var(--nav-h)}
+.detail-panel.open{width:var(--detail-w)}
+.detail-inner{min-width:var(--detail-w);display:flex;flex-direction:column;flex:1;overflow-y:auto}
+.detail-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px;flex-shrink:0;position:sticky;top:0;background:var(--bg2);z-index:5}
+.detail-close{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text2);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0;margin-left:auto}
+.detail-close:hover{border-color:var(--red);color:var(--red);background:var(--red-bg)}
+.detail-sym{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:#fff;letter-spacing:.5px}
+.detail-co{font-size:11px;color:var(--text2);margin-top:2px}
+.detail-tags{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+.dtag{font-size:9px;font-weight:600;padding:2px 7px;border-radius:4px;letter-spacing:.5px;font-family:'JetBrains Mono',monospace}
+.dtag-exch{background:var(--bg4);color:var(--text2);border:1px solid var(--border)}
+.dtag-sector{background:var(--acc-dim);color:var(--accent);border:1px solid rgba(41,98,255,.3)}
+.detail-price-block{padding:14px 16px;border-bottom:1px solid var(--border)}
+.dp-row{display:flex;align-items:baseline;gap:10px}
+.dp-ltp{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;color:#fff}
+.dp-chg{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600}
+.dp-chg.pos{color:var(--green)}
+.dp-chg.neg{color:var(--red)}
+.dp-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px}
+.dp-stat{display:flex;flex-direction:column;gap:2px}
+.dp-stat-lbl{font-size:9px;color:var(--text2);letter-spacing:.8px;text-transform:uppercase}
+.dp-stat-val{font-family:'JetBrains Mono',monospace;font-size:12px;color:#fff;font-weight:600}
+.week52-block{padding:12px 16px;border-bottom:1px solid var(--border)}
+.week52-label{font-size:9px;letter-spacing:1px;color:var(--text2);text-transform:uppercase;margin-bottom:8px;font-weight:600}
+.week52-bar-wrap{position:relative;margin:0 4px}
+.week52-bar{height:5px;background:var(--bg4);border-radius:4px;overflow:visible;position:relative}
+.week52-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--red),var(--yellow),var(--green));transition:width .6s ease}
+.week52-needle{position:absolute;top:50%;transform:translateY(-50%);width:10px;height:10px;background:#fff;border-radius:50%;border:2px solid var(--bg);box-shadow:0 0 6px rgba(255,255,255,.4);transition:left .6s ease;margin-left:-5px}
+.week52-limits{display:flex;justify-content:space-between;margin-top:6px}
+.w52-val{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2)}
+.detail-mini-chart{padding:12px 16px;border-bottom:1px solid var(--border)}
+.detail-spark-label{font-size:9px;letter-spacing:1px;color:var(--text2);text-transform:uppercase;margin-bottom:8px;font-weight:600}
+.tv-chart-block{padding:12px 16px;border-bottom:1px solid var(--border)}
+.tv-label{font-size:9px;letter-spacing:1px;color:var(--text2);text-transform:uppercase;margin-bottom:8px;font-weight:600}
+.tv-embed{border-radius:var(--r2);overflow:hidden;background:var(--bg3);border:1px solid var(--border)}
+.detail-actions{padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.da-btn{width:100%;padding:10px 16px;border-radius:var(--r2);cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;transition:.18s;border:none;letter-spacing:.3px}
+.da-btn.primary{background:var(--accent);color:#fff}
+.da-btn.primary:hover{background:#1a4fd6;box-shadow:0 4px 16px rgba(41,98,255,.35)}
+.da-btn.buy{background:linear-gradient(135deg,var(--green),#1d8078);color:#fff}
+.da-btn.buy:hover{box-shadow:0 4px 16px rgba(38,166,154,.35)}
+.da-btn.ghost{background:none;color:var(--text2);border:1px solid var(--border)}
+.da-btn.ghost:hover{border-color:var(--accent);color:var(--accent);background:var(--acc-dim)}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;flex-shrink:0}
+.footer-left{font-size:12px;color:var(--text2)}
+.footer-left strong{color:var(--text)}
+.footer-links{display:flex;gap:14px}
+.footer-links a{font-size:12px;color:var(--text2);text-decoration:none;transition:.16s}
+.footer-links a:hover{color:var(--accent)}
+.footer-right{font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace}
+.footer-disc{font-size:10px;color:var(--text3);padding:7px 24px 9px;border-top:1px solid var(--border);background:var(--bg2)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:400;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:.2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:24px;width:340px;box-shadow:0 24px 64px rgba(0,0,0,.6);animation:popIn .25s ease;max-width:90vw}
+.modal-title{font-size:16px;font-weight:800;color:#fff;margin-bottom:16px}
+.modal-label{font-size:10px;font-weight:600;letter-spacing:1px;color:var(--text2);text-transform:uppercase;margin-bottom:6px}
+.modal-input{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:var(--r2);padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;transition:.18s;margin-bottom:16px}
+.modal-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--acc-glow)}
+.modal-icons{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px}
+.mi-btn{height:36px;border-radius:7px;background:var(--bg3);border:1px solid var(--border);cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;transition:.15s}
+.mi-btn:hover,.mi-btn.sel{background:var(--acc-dim);border-color:rgba(41,98,255,.4)}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end}
+.modal-cancel{background:none;border:1px solid var(--border);color:var(--text2);padding:8px 16px;border-radius:6px;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;transition:.15s}
+.modal-cancel:hover{border-color:var(--red);color:var(--red)}
+.modal-save{background:var(--accent);border:none;color:#fff;padding:8px 18px;border-radius:6px;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;transition:.15s}
+.modal-save:hover{background:#1a4fd6}
+
+/* TOAST */
+.toast-area{position:fixed;bottom:28px;right:24px;z-index:500;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{background:var(--bg4);border:1px solid var(--border2);border-radius:var(--r);padding:10px 16px;font-size:12px;font-weight:600;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.5);display:flex;align-items:center;gap:8px;white-space:nowrap;animation:slideInRight .28s ease}
+.toast.ok{border-color:var(--green-bd)}
+.toast.warn{border-color:rgba(240,180,41,.4)}
+
+/* RESPONSIVE */
+@media(max-width:1100px){:root{--detail-w:300px;--left-w:230px}}
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .app{margin-left:0!important}
+  .hamburger{display:flex}
+  .nav-links{display:none}
+  .left-panel{width:52px}
+  .wl-tab-info,.wl-tab-del,.wl-badge{display:none}
+  .wl-tab-icon{width:34px;height:34px}
+  .left-stats,.left-header .left-title{display:none}
+}
+@media(max-width:640px){
+  :root{--detail-w:100vw}
+  .detail-panel.open{position:fixed;top:var(--nav-h);right:0;height:calc(100vh - var(--nav-h));z-index:250;width:100vw!important}
+}
+aside a {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></div>
+  <a class="nav-logo" href="#"><div class="nav-mark">▲</div>Market<em>Edge</em></a>
+ <div class="nav-links">
+  <a href="page1-dashboard.html">Dashboard</a>
+  <a href="page2-charts.html">Charts</a>
+  <a href="page3-screener.html">Screener</a>
+  <a href="page4-options.html">Options</a>
+  <a href="page5-orders.html">Orders</a>
+  <a href="page6-portfolio.html">Portfolio</a>
+  <a href="page7-watchlist.html">Watchlist</a>
+  <a href="page8-paper-trading.html">Paper Trade</a>
+  <a href="page9-ai-assistant.html">AI Assistant</a>
+</div>
+  <div class="nav-spacer"></div>
+  <div class="nav-right">
+    <div class="live-chip"><div class="live-dot"></div>LIVE</div>
+    <div class="nav-avatar">AK</div>
+  </div>
+</nav>
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <a href="page1-dashboard.html"><div class="side-btn" title="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div></a>
+
+  <a href="page2-charts.html"><div class="side-btn" title="Charts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></a>
+
+  <a href="page3-screener.html"><div class="side-btn" title="Screener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div></a>
+
+  <div class="side-div"></div>
+
+  <a href="page6-portfolio.html"><div class="side-btn" title="Portfolio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div></a>
+
+  <a href="page9-ai-assistant.html"><div class="side-btn" title="AI Bot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M12 12v2"/><rect x="8" y="14" width="8" height="6" rx="2"/><line x1="9" y1="17" x2="9" y2="17"/><line x1="15" y1="17" x2="15" y2="17"/></svg></div></a>
+
+  <div class="side-div"></div>
+
+  <a href="#"><div class="side-btn" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div></a>
+</aside>
+
+<!-- APP -->
+<div class="app" id="app">
+<div class="page-body">
+
+  <!-- LEFT PANEL -->
+  <aside class="left-panel">
+    <div class="left-header">
+      <div class="left-title">Watchlists</div>
+      <button class="add-wl-btn" onclick="openModal()" title="New watchlist">+</button>
+    </div>
+    <div class="wl-tabs" id="wlTabs"></div>
+    <div class="left-stats">
+      <div class="left-stat"><span class="ls-label">Total Stocks</span><span class="ls-val" id="totalStocksStat">—</span></div>
+      <div class="left-stat"><span class="ls-label">Gainers Today</span><span class="ls-val green" id="gainersStat">—</span></div>
+      <div class="left-stat"><span class="ls-label">Losers Today</span><span class="ls-val red" id="losersStat">—</span></div>
+    </div>
+  </aside>
+
+  <!-- MAIN PANEL -->
+  <main class="main-panel" id="mainPanel">
+    <div class="main-header">
+      <div>
+        <div class="main-wl-title" id="mainTitle">—</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px" id="mainSub">—</div>
+      </div>
+      <div class="main-wl-badge" id="mainBadge">—</div>
+      <div class="main-spacer"></div>
+      <button class="sort-btn" onclick="sortByChange()">↕ Sort by Change</button>
+    </div>
+
+    <div class="search-wrap">
+      <div class="search-inner">
+        <span class="search-icon">⌕</span>
+        <input class="search-input" id="searchInput" type="text" placeholder="Search and add symbol…" autocomplete="off"
+               oninput="onSearchInput(this.value)" onblur="closeAC()">
+        <span class="search-kbd">⌘K</span>
+      </div>
+      <div class="autocomplete-dd" id="acDrop"></div>
+    </div>
+
+    <div class="wl-items" id="wlItems"></div>
+
+    <div class="wl-bottom">
+      <div class="wl-count-label">Showing <strong id="countLabel">0</strong> instruments</div>
+      <div class="wl-limit" id="limitLabel">0 / 50 slots</div>
+    </div>
+  </main>
+
+  <!-- DETAIL PANEL -->
+  <aside class="detail-panel" id="detailPanel">
+    <div class="detail-inner">
+      <div class="detail-header">
+        <div style="flex:1;min-width:0">
+          <div class="detail-sym" id="dSym">—</div>
+          <div class="detail-co" id="dCo">—</div>
+          <div class="detail-tags" id="dTags"></div>
+        </div>
+        <button class="detail-close" onclick="closeDetail()">✕</button>
+      </div>
+
+      <div class="detail-price-block">
+        <div class="dp-row">
+          <div class="dp-ltp" id="dLTP">—</div>
+          <div class="dp-chg" id="dChg">—</div>
+        </div>
+        <div class="dp-stats">
+          <div class="dp-stat"><div class="dp-stat-lbl">Volume</div><div class="dp-stat-val" id="dVol">—</div></div>
+          <div class="dp-stat"><div class="dp-stat-lbl">Open</div><div class="dp-stat-val" id="dOpen">—</div></div>
+          <div class="dp-stat"><div class="dp-stat-lbl">Prev Close</div><div class="dp-stat-val" id="dPrev">—</div></div>
+          <div class="dp-stat"><div class="dp-stat-lbl">Day High</div><div class="dp-stat-val" id="dHigh">—</div></div>
+          <div class="dp-stat"><div class="dp-stat-lbl">Day Low</div><div class="dp-stat-val" id="dLow">—</div></div>
+          <div class="dp-stat"><div class="dp-stat-lbl">Mkt Cap</div><div class="dp-stat-val" id="dMcap">—</div></div>
+        </div>
+      </div>
+
+      <div class="week52-block">
+        <div class="week52-label">52-Week Range</div>
+        <div class="week52-bar-wrap">
+          <div class="week52-bar">
+            <div class="week52-fill" id="w52Fill" style="width:60%"></div>
+            <div class="week52-needle" id="w52Needle" style="left:60%"></div>
+          </div>
+        </div>
+        <div class="week52-limits">
+          <div class="w52-val" id="w52Low">—</div>
+          <div class="w52-val" style="color:var(--text3)">52-Week</div>
+          <div class="w52-val" id="w52High">—</div>
+        </div>
+      </div>
+
+      <div class="detail-mini-chart">
+        <div class="detail-spark-label">5-Day Price Action</div>
+        <canvas id="detailSparkCanvas" width="300" height="70"></canvas>
+      </div>
+
+      <div class="tv-chart-block">
+        <div class="tv-label">Market Overview</div>
+        <div class="tv-embed" id="tvEmbed"></div>
+      </div>
+
+      <div class="detail-actions">
+        <button class="da-btn primary" onclick="toast('Opening full chart…','ok')">📈 Open in Charts</button>
+        <button class="da-btn buy" onclick="toast('Opening order panel…','ok')">⚡ Place Order</button>
+        <button class="da-btn ghost" onclick="addToOther()">＋ Add to Another Watchlist</button>
+      </div>
+    </div>
+  </aside>
+
+</div><!-- /page-body -->
+
+<footer>
+  <div class="footer-left"><strong>MarketEdge</strong> © 2025 — All Rights Reserved</div>
+  <div class="footer-links"><a href="#">Terms</a><a href="#">Privacy</a><a href="#">Disclaimer</a><a href="#">Support</a></div>
+  <div class="footer-right">v7.0.0 · NSE · BSE</div>
+</footer>
+<div class="footer-disc">⚠ Market data is 15-min delayed. For informational purposes only. Not SEBI-registered investment advice.</div>
+</div><!-- /app -->
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">Create New Watchlist</div>
+    <div class="modal-label">Name</div>
+    <input class="modal-input" id="wlNameInput" type="text" placeholder="e.g. Banking Stocks…" maxlength="28">
+    <div class="modal-label">Icon</div>
+    <div class="modal-icons" id="modalIcons">
+      <div class="mi-btn sel" onclick="selectIcon(this,'⭐')">⭐</div>
+      <div class="mi-btn" onclick="selectIcon(this,'📊')">📊</div>
+      <div class="mi-btn" onclick="selectIcon(this,'🔥')">🔥</div>
+      <div class="mi-btn" onclick="selectIcon(this,'💡')">💡</div>
+      <div class="mi-btn" onclick="selectIcon(this,'🎯')">🎯</div>
+      <div class="mi-btn" onclick="selectIcon(this,'🌙')">🌙</div>
+      <div class="mi-btn" onclick="selectIcon(this,'⚡')">⚡</div>
+      <div class="mi-btn" onclick="selectIcon(this,'🏆')">🏆</div>
+      <div class="mi-btn" onclick="selectIcon(this,'💎')">💎</div>
+      <div class="mi-btn" onclick="selectIcon(this,'🔮')">🔮</div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-save" onclick="createWatchlist()">Create</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-area" id="toastArea"></div>
+
+<script>
+/* ────────────────────────────────────────
+   STOCK DATABASE
+──────────────────────────────────────── */
+const DB = {
+  'NIFTY':      {name:'Nifty 50 Index',        ltp:22147.90,chg:+0.31,vol:'—',    sector:'Index',  exch:'NSE',open:22070,prev:22079,high:22210,low:22030,mcap:'—',        w52h:23338,w52l:18837,spark:[21800,21950,22100,21900,22148]},
+  'BANKNIFTY':  {name:'Bank Nifty Index',       ltp:47832.15,chg:-0.18,vol:'—',    sector:'Index',  exch:'NSE',open:47920,prev:47918,high:48100,low:47600,mcap:'—',        w52h:49681,w52l:42451,spark:[47200,47500,48100,47700,47832]},
+  'RELIANCE':   {name:'Reliance Industries Ltd',ltp:2941.50, chg:+1.23,vol:'8.2M', sector:'Energy', exch:'NSE',open:2912, prev:2905, high:2960, low:2905, mcap:'₹19.9L Cr',w52h:3217, w52l:2220, spark:[2820,2860,2900,2880,2942]},
+  'TCS':        {name:'Tata Consultancy Svcs',  ltp:3780.25, chg:-0.45,vol:'1.8M', sector:'IT',     exch:'NSE',open:3795, prev:3797, high:3820, low:3768, mcap:'₹13.7L Cr',w52h:4255, w52l:3311, spark:[3820,3810,3800,3790,3780]},
+  'INFY':       {name:'Infosys Ltd',            ltp:1680.10, chg:+0.87,vol:'5.4M', sector:'IT',     exch:'NSE',open:1665, prev:1665, high:1692, low:1660, mcap:'₹6.9L Cr', w52h:1974, w52l:1358, spark:[1635,1645,1655,1668,1680]},
+  'HDFCBANK':   {name:'HDFC Bank Ltd',          ltp:1624.35, chg:-1.12,vol:'12.1M',sector:'Banking',exch:'NSE',open:1642, prev:1642, high:1648, low:1618, mcap:'₹12.4L Cr',w52h:1794, w52l:1363, spark:[1680,1660,1645,1635,1624]},
+  'ICICIBANK':  {name:'ICICI Bank Ltd',         ltp:1102.80, chg:+2.05,vol:'18.7M',sector:'Banking',exch:'NSE',open:1082, prev:1080, high:1108, low:1078, mcap:'₹7.8L Cr', w52h:1196, w52l:882,  spark:[1060,1070,1085,1095,1103]},
+  'SBIN':       {name:'State Bank of India',    ltp:782.90,  chg:+1.54,vol:'28.3M',sector:'Banking',exch:'NSE',open:771,  prev:771,  high:786,  low:768,  mcap:'₹6.9L Cr', w52h:912,  w52l:543,  spark:[760,765,772,778,783]},
+  'WIPRO':      {name:'Wipro Ltd',              ltp:556.40,  chg:+0.72,vol:'7.2M', sector:'IT',     exch:'NSE',open:552,  prev:552,  high:561,  low:549,  mcap:'₹2.9L Cr', w52h:608,  w52l:379,  spark:[540,545,550,554,556]},
+  'HCLTECH':    {name:'HCL Technologies Ltd',   ltp:1542.35, chg:-0.63,vol:'3.1M', sector:'IT',     exch:'NSE',open:1552, prev:1552, high:1558, low:1535, mcap:'₹4.2L Cr', w52h:1896, w52l:1235, spark:[1570,1565,1558,1548,1542]},
+  'TATAMOTORS': {name:'Tata Motors Ltd',        ltp:924.75,  chg:+3.21,vol:'22.8M',sector:'Auto',   exch:'NSE',open:897,  prev:895,  high:932,  low:893,  mcap:'₹3.4L Cr', w52h:1179, w52l:618,  spark:[850,870,895,912,925]},
+  'BAJFINANCE': {name:'Bajaj Finance Ltd',      ltp:7234.50, chg:-1.34,vol:'1.4M', sector:'NBFC',   exch:'NSE',open:7330, prev:7332, high:7345, low:7218, mcap:'₹4.4L Cr', w52h:8192, w52l:6187, spark:[7400,7380,7320,7260,7235]},
+  'ADANIENT':   {name:'Adani Enterprises Ltd',  ltp:2564.30, chg:-2.15,vol:'4.6M', sector:'Conglom',exch:'NSE',open:2620, prev:2621, high:2625, low:2552, mcap:'₹2.9L Cr', w52h:3743, w52l:2025, spark:[2700,2680,2640,2600,2564]},
+  'ONGC':       {name:'Oil & Natural Gas Corp', ltp:278.55,  chg:+0.88,vol:'35.1M',sector:'Energy', exch:'NSE',open:276,  prev:276,  high:281,  low:274,  mcap:'₹3.5L Cr', w52h:345,  w52l:177,  spark:[268,271,275,277,279]},
+  'COALINDIA':  {name:'Coal India Ltd',         ltp:457.20,  chg:+1.62,vol:'9.8M', sector:'Mining', exch:'NSE',open:450,  prev:450,  high:460,  low:448,  mcap:'₹2.8L Cr', w52h:543,  w52l:310,  spark:[440,444,449,454,457]},
+  'MARUTI':     {name:'Maruti Suzuki India',    ltp:12478.25,chg:+0.91,vol:'0.4M', sector:'Auto',   exch:'NSE',open:12364,prev:12364,high:12530,low:12310,mcap:'₹3.8L Cr', w52h:13675,w52l:9613, spark:[11800,12000,12200,12350,12478]},
+  'AXISBANK':   {name:'Axis Bank Ltd',          ltp:1076.40, chg:+1.08,vol:'11.2M',sector:'Banking',exch:'NSE',open:1065, prev:1065, high:1082, low:1060, mcap:'₹3.3L Cr', w52h:1339, w52l:995,  spark:[1040,1050,1062,1070,1076]},
+  'SUNPHARMA':  {name:'Sun Pharmaceutical Ind', ltp:1658.90, chg:+2.14,vol:'3.8M', sector:'Pharma', exch:'NSE',open:1625, prev:1625, high:1668, low:1620, mcap:'₹3.9L Cr', w52h:1960, w52l:1090, spark:[1580,1600,1625,1642,1659]},
+  'ITC':        {name:'ITC Ltd',                ltp:472.15,  chg:-0.21,vol:'19.4M',sector:'FMCG',   exch:'NSE',open:473,  prev:473,  high:476,  low:469,  mcap:'₹5.8L Cr', w52h:533,  w52l:399,  spark:[475,474,473,472,472]},
+  'BAJAJFINSV': {name:'Bajaj Finserv Ltd',      ltp:1712.40, chg:+0.55,vol:'2.1M', sector:'Finance',exch:'NSE',open:1703, prev:1703, high:1724, low:1700, mcap:'₹2.7L Cr', w52h:1947, w52l:1419, spark:[1680,1690,1700,1708,1712]},
+};
+
+/* ────────────────────────────────────────
+   STATE
+──────────────────────────────────────── */
+let watchlists = [
+  {id:'wl1',name:'My F&O',        icon:'⚡',stocks:['NIFTY','BANKNIFTY','RELIANCE','TCS','INFY']},
+  {id:'wl2',name:'Large Caps',    icon:'🏆',stocks:['HDFCBANK','ICICIBANK','SBIN','WIPRO','HCLTECH']},
+  {id:'wl3',name:'Intraday Picks',icon:'🔥',stocks:['TATAMOTORS','BAJFINANCE','ADANIENT','ONGC','COALINDIA']},
+];
+let activeWlId = 'wl1';
+let activeStockSym = null;
+let selectedIcon = '⭐';
+let sortDesc = true;
+
+/* ────────────────────────────────────────
+   UTILS
+──────────────────────────────────────── */
+const fmtP  = (n,d=2) => '₹'+Math.abs(n).toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtC  = n => (n>=0?'+':'')+n.toFixed(2)+'%';
+const activeWl = () => watchlists.find(w=>w.id===activeWlId);
+
+/* ────────────────────────────────────────
+   RENDER TABS
+──────────────────────────────────────── */
+function renderTabs() {
+  const c = document.getElementById('wlTabs');
+  c.innerHTML = watchlists.map(wl=>`
+    <div class="wl-tab${wl.id===activeWlId?' active':''}" onclick="switchWl('${wl.id}')">
+      <div class="wl-tab-icon">${wl.icon}</div>
+      <div class="wl-tab-info">
+        <div class="wl-tab-name">${wl.name}</div>
+        <div class="wl-tab-sub">${wl.stocks.length} stock${wl.stocks.length!==1?'s':''}</div>
+      </div>
+      <div class="wl-badge">${wl.stocks.length}</div>
+      ${watchlists.length>1?`<button class="wl-tab-del" onclick="deleteWl(event,'${wl.id}')" title="Delete">✕</button>`:''}
+    </div>`).join('');
+
+  let g=0,l=0,t=0;
+  watchlists.forEach(w=>w.stocks.forEach(s=>{const d=DB[s];if(!d)return;t++;d.chg>=0?g++:l++;}));
+  document.getElementById('totalStocksStat').textContent=t;
+  document.getElementById('gainersStat').textContent=g;
+  document.getElementById('losersStat').textContent=l;
+}
+
+/* ────────────────────────────────────────
+   RENDER ITEMS
+──────────────────────────────────────── */
+function renderItems() {
+  const wl = activeWl(); if(!wl) return;
+  document.getElementById('mainTitle').textContent  = wl.name;
+  document.getElementById('mainSub').textContent    = `${wl.stocks.length} instrument${wl.stocks.length!==1?'s':''} · Updated just now`;
+  document.getElementById('mainBadge').textContent  = wl.icon;
+  document.getElementById('countLabel').textContent = wl.stocks.length;
+  document.getElementById('limitLabel').textContent = `${wl.stocks.length} / 50 slots`;
+
+  const container = document.getElementById('wlItems');
+  if(!wl.stocks.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-art">
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="40" stroke="#2962FF" stroke-width="1.5" stroke-dasharray="5 4" opacity=".4"/>
+            <circle cx="50" cy="50" r="26" stroke="#2962FF" stroke-width="1" opacity=".2"/>
+            <path d="M34 50h32M50 34v32" stroke="#2962FF" stroke-width="2" stroke-linecap="round" opacity=".5"/>
+            <circle cx="50" cy="50" r="5" fill="#2962FF" opacity=".3"/>
+          </svg>
+        </div>
+        <div class="empty-title">Add your first stock</div>
+        <div class="empty-sub">Use the search bar above to find and add symbols to this watchlist</div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = wl.stocks.map((sym,idx)=>{
+    const d = DB[sym]; if(!d) return '';
+    const pos = d.chg >= 0;
+    const svg = sparkSVG(d.spark, pos);
+    return `<div class="stock-card${sym===activeStockSym?' active':''}" onclick="openDetail('${sym}')" data-sym="${sym}" style="animation-delay:${idx*0.04}s">
+      <div class="drag-handle"><span></span><span></span><span></span></div>
+      <div class="move-arrows">
+        <button class="move-btn" onclick="moveStock(event,'${sym}',-1)" ${idx===0?'disabled':''}>▲</button>
+        <button class="move-btn" onclick="moveStock(event,'${sym}',+1)" ${idx===wl.stocks.length-1?'disabled':''}>▼</button>
+      </div>
+      <div class="stock-body">
+        <div class="stock-info">
+          <div class="stock-sym">${sym}</div>
+          <div class="stock-name">${d.name}</div>
+        </div>
+        <div class="sparkline-wrap">${svg}</div>
+        <div class="stock-nums">
+          <div class="stock-ltp">${fmtP(d.ltp,d.ltp>=1000?2:2)}</div>
+          <div class="stock-chg ${pos?'pos':'neg'}">${fmtC(d.chg)}</div>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="card-act-btn eye" onclick="openDetail('${sym}');event.stopPropagation()" title="View">👁</button>
+        <button class="card-act-btn trash" onclick="removeStock(event,'${sym}')" title="Remove">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ────────────────────────────────────────
+   SPARKLINE SVG
+──────────────────────────────────────── */
+function sparkSVG(data, pos) {
+  const W=54,H=26,pad=2;
+  const mn=Math.min(...data),mx=Math.max(...data),rng=mx-mn||1;
+  const pts=data.map((v,i)=>[pad+i/(data.length-1)*(W-pad*2), H-pad-(v-mn)/rng*(H-pad*2)]);
+  const line='M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join('L');
+  const fill=line+`L${pts[pts.length-1][0]},${H}L${pts[0][0]},${H}Z`;
+  const col=pos?'#26a69a':'#ef5350';
+  const uid='s'+data[0]+'_'+data[data.length-1];
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <defs><linearGradient id="${uid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${col}" stop-opacity=".3"/>
+      <stop offset="100%" stop-color="${col}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${fill}" fill="url(#${uid})"/>
+    <path d="${line}" stroke="${col}" stroke-width="1.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
+/* ────────────────────────────────────────
+   DETAIL PANEL
+──────────────────────────────────────── */
+function openDetail(sym) {
+  const d = DB[sym]; if(!d) return;
+  activeStockSym = sym;
+  document.querySelectorAll('.stock-card').forEach(c=>c.classList.toggle('active',c.dataset.sym===sym));
+  const pos = d.chg >= 0;
+
+  document.getElementById('dSym').textContent = sym;
+  document.getElementById('dCo').textContent  = d.name;
+  document.getElementById('dTags').innerHTML  = `<span class="dtag dtag-exch">${d.exch}</span><span class="dtag dtag-sector">${d.sector}</span>`;
+  document.getElementById('dLTP').textContent  = fmtP(d.ltp,2);
+  const chgEl = document.getElementById('dChg');
+  chgEl.textContent = fmtC(d.chg);
+  chgEl.className   = 'dp-chg '+(pos?'pos':'neg');
+  document.getElementById('dVol').textContent  = d.vol;
+  document.getElementById('dOpen').textContent = fmtP(d.open,2);
+  document.getElementById('dPrev').textContent = fmtP(d.prev,2);
+  document.getElementById('dHigh').textContent = fmtP(d.high,2);
+  document.getElementById('dLow').textContent  = fmtP(d.low,2);
+  document.getElementById('dMcap').textContent = d.mcap;
+
+  const pct = Math.round((d.ltp-d.w52l)/(d.w52h-d.w52l)*100);
+  document.getElementById('w52Fill').style.width  = pct+'%';
+  document.getElementById('w52Needle').style.left = pct+'%';
+  document.getElementById('w52Low').textContent   = fmtP(d.w52l,2);
+  document.getElementById('w52High').textContent  = fmtP(d.w52h,2);
+
+  drawDetailSpark(d.spark, pos);
+
+  // TV embed simulation
+  document.getElementById('tvEmbed').innerHTML = `
+    <div style="padding:14px;text-align:center">
+      <div style="background:var(--bg4);border-radius:8px;padding:14px 10px;border:1px dashed var(--border2)">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#fff;margin-bottom:3px">${sym}</div>
+        <div style="font-size:13px;color:${pos?'var(--green)':'var(--red)'};font-family:'JetBrains Mono',monospace;font-weight:600">${fmtP(d.ltp,2)} <span style="font-size:11px">${fmtC(d.chg)}</span></div>
+        <div style="margin-top:8px;font-size:10px;color:var(--text3)">NSE:${sym} · Real-time Chart</div>
+        <button onclick="toast('Launching TradingView for ${sym}…','ok')" style="margin-top:10px;background:var(--accent);border:none;color:#fff;padding:7px 18px;border-radius:7px;cursor:pointer;font-size:12px;font-family:Syne,sans-serif;font-weight:700;transition:.2s">Open Full Chart ↗</button>
+      </div>
+      <div style="font-size:9px;color:var(--text3);margin-top:8px;font-family:'JetBrains Mono',monospace">TradingView widget loads in production</div>
+    </div>`;
+
+  document.getElementById('detailPanel').classList.add('open');
+}
+
+function drawDetailSpark(data, pos) {
+  const canvas = document.getElementById('detailSparkCanvas');
+  const dp = window.devicePixelRatio||1;
+  const W=300, H=70;
+  canvas.width = W*dp; canvas.height = H*dp;
+  canvas.style.width='100%'; canvas.style.height=H+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dp,dp);
+  const mn=Math.min(...data)-1,mx=Math.max(...data)+1;
+  const xS=W/(data.length-1);
+  const yP=v=>H-6-(v-mn)/(mx-mn)*(H-12);
+  const col=pos?'#26a69a':'#ef5350';
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,pos?'rgba(38,166,154,.25)':'rgba(239,83,80,.25)');
+  grad.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.beginPath();
+  data.forEach((v,i)=>i?ctx.lineTo(i*xS,yP(v)):ctx.moveTo(0,yP(v)));
+  ctx.lineTo((data.length-1)*xS,H);ctx.lineTo(0,H);ctx.closePath();
+  ctx.fillStyle=grad;ctx.fill();
+  ctx.beginPath();
+  data.forEach((v,i)=>i?ctx.lineTo(i*xS,yP(v)):ctx.moveTo(0,yP(v)));
+  ctx.strokeStyle=col;ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();
+  data.forEach((v,i)=>{
+    ctx.beginPath();ctx.arc(i*xS,yP(v),3.5,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+    ctx.beginPath();ctx.arc(i*xS,yP(v),1.8,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+  });
+}
+
+function closeDetail() {
+  document.getElementById('detailPanel').classList.remove('open');
+  activeStockSym=null;
+  document.querySelectorAll('.stock-card').forEach(c=>c.classList.remove('active'));
+}
+
+/* ────────────────────────────────────────
+   WATCHLIST OPERATIONS
+──────────────────────────────────────── */
+function switchWl(id) {
+  activeWlId=id; closeDetail(); renderTabs(); renderItems();
+}
+
+function deleteWl(e, id) {
+  e.stopPropagation();
+  if(watchlists.length<=1){toast('Cannot delete the last watchlist','warn');return;}
+  watchlists=watchlists.filter(w=>w.id!==id);
+  if(activeWlId===id) activeWlId=watchlists[0].id;
+  renderTabs();renderItems();
+  toast('Watchlist deleted','ok');
+}
+
+function removeStock(e, sym) {
+  e.stopPropagation();
+  const wl=activeWl();
+  wl.stocks=wl.stocks.filter(s=>s!==sym);
+  if(activeStockSym===sym) closeDetail();
+  renderTabs();renderItems();
+  toast(`${sym} removed from ${wl.name}`,'ok');
+}
+
+function moveStock(e, sym, dir) {
+  e.stopPropagation();
+  const wl=activeWl();
+  const i=wl.stocks.indexOf(sym);
+  const ni=i+dir;
+  if(ni<0||ni>=wl.stocks.length) return;
+  [wl.stocks[i],wl.stocks[ni]]=[wl.stocks[ni],wl.stocks[i]];
+  renderItems();
+}
+
+function sortByChange() {
+  const wl=activeWl();
+  wl.stocks.sort((a,b)=>{const da=DB[a]?.chg||0,db=DB[b]?.chg||0;return sortDesc?db-da:da-db;});
+  sortDesc=!sortDesc;
+  renderItems();
+  toast(`Sorted by change (${sortDesc?'desc':'asc'})`,'ok');
+}
+
+function addStock(sym) {
+  const wl=activeWl();
+  if(!DB[sym]){toast('Symbol not found','warn');return;}
+  if(wl.stocks.includes(sym)){toast(`${sym} already in ${wl.name}`,'warn');return;}
+  if(wl.stocks.length>=50){toast('Watchlist full (50 max)','warn');return;}
+  wl.stocks.push(sym);
+  renderTabs();renderItems();
+  toast(`${sym} added to ${wl.name}`,'ok');
+  setTimeout(()=>openDetail(sym),200);
+}
+
+function addToOther() {
+  if(!activeStockSym) return;
+  const others=watchlists.filter(w=>w.id!==activeWlId&&!w.stocks.includes(activeStockSym));
+  if(!others.length){toast('Already in all watchlists','warn');return;}
+  others[0].stocks.push(activeStockSym);
+  renderTabs();
+  toast(`${activeStockSym} added to "${others[0].name}"`,'ok');
+}
+
+/* ────────────────────────────────────────
+   SEARCH / AUTOCOMPLETE
+──────────────────────────────────────── */
+let acT;
+function onSearchInput(val) {
+  clearTimeout(acT);
+  const dd=document.getElementById('acDrop');
+  if(!val.trim()){dd.classList.remove('open');return;}
+  acT=setTimeout(()=>{
+    const q=val.toUpperCase();
+    const hits=Object.entries(DB).filter(([s,d])=>s.includes(q)||d.name.toUpperCase().includes(q)).slice(0,7);
+    if(!hits.length){dd.classList.remove('open');return;}
+    dd.innerHTML=`<div class="ac-header">Matching "${val}"</div>`+
+      hits.map(([sym,d])=>{
+        const pos=d.chg>=0;
+        const inWl=activeWl().stocks.includes(sym);
+        return `<div class="ac-item" onmousedown="acPick('${sym}')">
+          <div class="ac-sym">${sym}</div>
+          <div class="ac-name">${d.name}</div>
+          <div class="ac-price">
+            <div>${fmtP(d.ltp,2)}</div>
+            <div class="ac-chg-val" style="color:${pos?'var(--green)':'var(--red)'}">${fmtC(d.chg)}</div>
+          </div>
+          <div class="ac-add">${inWl?'✓':'+'}</div>
+        </div>`;
+      }).join('');
+    dd.classList.add('open');
+  },160);
+}
+
+function acPick(sym) {
+  addStock(sym);
+  document.getElementById('searchInput').value='';
+  document.getElementById('acDrop').classList.remove('open');
+}
+function closeAC(){setTimeout(()=>document.getElementById('acDrop').classList.remove('open'),200)}
+
+/* ────────────────────────────────────────
+   MODAL
+──────────────────────────────────────── */
+function openModal(){
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('wlNameInput').focus(),150);
+}
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.getElementById('wlNameInput').value='';
+  selectedIcon='⭐';
+  document.querySelectorAll('.mi-btn').forEach((b,i)=>b.classList.toggle('sel',i===0));
+}
+function closeModalOutside(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
+function selectIcon(el,icon){
+  selectedIcon=icon;
+  document.querySelectorAll('.mi-btn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+}
+function createWatchlist(){
+  const name=document.getElementById('wlNameInput').value.trim();
+  if(!name){document.getElementById('wlNameInput').focus();return;}
+  if(watchlists.length>=10){toast('Max 10 watchlists','warn');return;}
+  const id='wl'+Date.now();
+  watchlists.push({id,name,icon:selectedIcon,stocks:[]});
+  closeModal();
+  switchWl(id);
+  toast(`"${name}" created`,'ok');
+}
+document.getElementById('wlNameInput').addEventListener('keydown',e=>{if(e.key==='Enter')createWatchlist();});
+
+/* ────────────────────────────────────────
+   TOAST
+──────────────────────────────────────── */
+function toast(msg,type='ok'){
+  const a=document.getElementById('toastArea');
+  const el=document.createElement('div');
+  el.className='toast '+type;
+  el.innerHTML=(type==='ok'?'<span style="color:var(--green)">✓</span>':'<span style="color:var(--yellow)">⚠</span>')+' '+msg;
+  a.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(10px)';el.style.transition='.3s';setTimeout(()=>el.remove(),320);},2800);
+}
+
+/* ────────────────────────────────────────
+   SIDEBAR
+──────────────────────────────────────── */
+let sbOpen=true;
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  if(window.innerWidth<=900){sb.classList.toggle('open');}
+  else{sbOpen=!sbOpen;sb.classList.toggle('collapsed',!sbOpen);document.getElementById('app').classList.toggle('sb-collapsed',!sbOpen);}
+}
+function collapseSidebar(){
+  sbOpen=false;
+  document.getElementById('sidebar').classList.add('collapsed');
+  document.getElementById('app').classList.add('sb-collapsed');
+}
+
+/* ────────────────────────────────────────
+   KEYBOARD SHORTCUTS
+──────────────────────────────────────── */
+document.addEventListener('keydown',e=>{
+  const inp=document.activeElement;
+  if(inp&&(inp.tagName==='INPUT'||inp.tagName==='TEXTAREA')) return;
+  if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();document.getElementById('searchInput').focus();}
+  if(e.key==='Escape')closeDetail();
+});
+
+/* ────────────────────────────────────────
+   INIT
+──────────────────────────────────────── */
+window.addEventListener('load',()=>{renderTabs();renderItems();});
+</script>
+</body>
+</html>

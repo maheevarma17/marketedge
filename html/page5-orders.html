@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MarketEdge — Order Placement</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #131722;
+  --bg2: #1a1f2e;
+  --bg3: #1e2438;
+  --bg4: #222840;
+  --accent: #2962FF;
+  --accent2: #1a4fd6;
+  --text: #D1D4DC;
+  --text2: #8892a4;
+  --text3: #5c6478;
+  --border: #252d3d;
+  --border2: #2e3650;
+  --green: #26a69a;
+  --green2: #1d8078;
+  --red: #ef5350;
+  --red2: #c62828;
+  --yellow: #f59e0b;
+  --grey: #4b5563;
+  --panel-w: 340px;
+  --nav-h: 56px;
+  --sidebar-w: 220px;
+  --radius: 10px;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+
+/* ══ KEYFRAMES ══ */
+@keyframes slideInRight{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+@keyframes ripple{0%{transform:scale(0);opacity:.6}100%{transform:scale(3);opacity:0}}
+@keyframes orderSuccess{0%{transform:scale(.95);opacity:0}60%{transform:scale(1.02)}100%{transform:scale(1);opacity:1}}
+
+/* ══ NAVBAR ══ */
+.navbar{
+  position:fixed;top:0;left:0;right:0;height:var(--nav-h);
+  background:rgba(26,31,46,0.97);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;z-index:200;gap:16px;
+}
+.nav-logo{font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.nav-logo em{color:var(--accent);font-style:normal}
+.nav-logo::before{content:'▲';color:var(--accent);font-size:13px}
+.nav-links{display:flex;gap:2px;margin-left:16px}
+.nav-link{padding:6px 13px;border-radius:6px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;transition:.2s;text-decoration:none;white-space:nowrap}
+.nav-link:hover{color:var(--text);background:var(--bg3)}
+.nav-link.active{color:#fff;background:var(--accent)}
+.nav-spacer{flex:1}
+.nav-right{display:flex;align-items:center;gap:10px}
+.nav-chip{background:rgba(38,166,154,.12);color:var(--green);border:1px solid rgba(38,166,154,.3);border-radius:5px;padding:3px 8px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:600;display:flex;align-items:center;gap:4px}
+.nav-chip::before{content:'';width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
+.nav-kbd{background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:2px 7px;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text2);cursor:pointer;transition:.2s}
+.nav-kbd:hover{border-color:var(--accent);color:var(--accent)}
+.nav-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#6c63ff);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;border:2px solid transparent;transition:.2s}
+.nav-avatar:hover{border-color:var(--accent)}
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px}
+.hamburger span{width:20px;height:1.5px;background:var(--text2);border-radius:2px;transition:.3s}
+
+/* ══ SIDEBAR ══ */
+.sidebar{
+  position:fixed;top:var(--nav-h);left:0;
+  width:var(--sidebar-w);height:calc(100vh - var(--nav-h));
+  background:var(--bg2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;transition:transform .3s ease;z-index:150;overflow-y:auto;
+}
+.sidebar.collapsed{transform:translateX(-100%)}
+.sidebar-section{padding:18px 14px 6px;font-size:9.5px;font-weight:700;letter-spacing:1.8px;color:var(--text3);text-transform:uppercase}
+.sidebar-item{
+  display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;
+  border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);
+  transition:.18s;text-decoration:none;position:relative;
+}
+.sidebar-item:hover{color:var(--text);background:var(--bg3)}
+.sidebar-item.active{color:#fff;background:rgba(41,98,255,.15)}
+.sidebar-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:20px;background:var(--accent);border-radius:0 3px 3px 0}
+.sidebar-item .icon{font-size:14px;width:18px;text-align:center}
+.sidebar-footer{margin-top:auto;padding:12px;border-top:1px solid var(--border)}
+.collapse-btn{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;cursor:pointer;color:var(--text2);font-size:12px;transition:.2s}
+.collapse-btn:hover{background:var(--bg3);color:var(--text)}
+
+/* ══ LAYOUT ══ */
+.layout{margin-top:var(--nav-h);margin-left:var(--sidebar-w);margin-right:var(--panel-w);transition:all .3s ease;min-height:calc(100vh - var(--nav-h));display:flex;flex-direction:column}
+.layout.sidebar-collapsed{margin-left:0}
+.content{padding:24px;flex:1}
+
+/* ══ PAGE HEADER ══ */
+.page-header{margin-bottom:20px;animation:fadeUp .4s ease}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);margin-bottom:8px}
+.breadcrumb a{color:var(--accent);text-decoration:none}
+.breadcrumb span{color:var(--text3)}
+.page-title{font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px;display:flex;align-items:center;gap:10px}
+.page-title-badge{font-size:11px;font-weight:600;background:rgba(41,98,255,.18);color:var(--accent);border:1px solid rgba(41,98,255,.3);border-radius:5px;padding:3px 8px;letter-spacing:.5px}
+.page-sub{font-size:12px;color:var(--text2);margin-top:5px;font-family:'JetBrains Mono',monospace}
+
+/* ══ TABS ══ */
+.tabs-wrap{display:flex;align-items:center;gap:0;border-bottom:1px solid var(--border);margin-bottom:0}
+.tab-btn{padding:12px 20px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.2s;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:#fff;border-bottom-color:var(--accent)}
+.tab-count{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:1px 7px;font-size:10px;font-family:'JetBrains Mono',monospace}
+.tab-btn.active .tab-count{background:rgba(41,98,255,.2);border-color:rgba(41,98,255,.4);color:var(--accent)}
+
+/* ══ ORDERS SECTION ══ */
+.orders-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;animation:fadeUp .4s ease .1s both}
+.orders-header{padding:16px 20px 0}
+.orders-actions{padding:12px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.search-filter{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 12px;display:flex;align-items:center;gap:8px;flex:1;max-width:280px}
+.search-filter input{background:none;border:none;outline:none;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;width:100%}
+.search-filter input::placeholder{color:var(--text3)}
+.filter-icon{color:var(--text3);font-size:13px}
+.refresh-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:7px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'Syne',sans-serif;transition:.2s;display:flex;align-items:center;gap:6px}
+.refresh-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ══ TABLE ══ */
+.table-wrap{overflow-x:auto}
+table.orders-tbl{width:100%;border-collapse:collapse;min-width:700px}
+table.orders-tbl thead th{
+  background:var(--bg3);padding:10px 14px;
+  text-align:left;font-size:10px;font-weight:600;letter-spacing:1px;
+  color:var(--text2);text-transform:uppercase;white-space:nowrap;
+  border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2;
+}
+table.orders-tbl thead th:first-child{border-radius:0}
+table.orders-tbl tbody tr{border-bottom:1px solid rgba(37,45,61,.6);transition:.15s;animation:fadeUp .3s ease both}
+table.orders-tbl tbody tr:hover{background:rgba(41,98,255,.05)}
+table.orders-tbl tbody tr.inline-edit-row{background:rgba(41,98,255,.07);border-bottom:2px solid var(--accent)}
+table.orders-tbl td{padding:12px 14px;font-size:13px;white-space:nowrap}
+table.orders-tbl tbody tr:last-child td{border-bottom:none}
+
+.time-cell{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--text2)}
+.symbol-cell{font-weight:700;color:#fff;font-size:13.5px}
+.symbol-cell .exch{font-size:10px;font-weight:500;color:var(--text3);margin-left:4px;font-family:'JetBrains Mono',monospace}
+.type-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.8px;font-family:'JetBrains Mono',monospace}
+.type-buy{background:rgba(38,166,154,.15);color:var(--green);border:1px solid rgba(38,166,154,.25)}
+.type-sell{background:rgba(239,83,80,.15);color:var(--red);border:1px solid rgba(239,83,80,.25)}
+.product-tag{font-size:10px;font-weight:600;color:var(--text2);background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:2px 6px;font-family:'JetBrains Mono',monospace}
+.qty-cell{font-family:'JetBrains Mono',monospace;font-size:13px}
+.price-cell{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text)}
+
+.status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.6px}
+.status-badge::before{content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.status-executed{background:rgba(38,166,154,.12);color:var(--green);border:1px solid rgba(38,166,154,.2)}
+.status-executed::before{background:var(--green)}
+.status-pending{background:rgba(245,158,11,.12);color:var(--yellow);border:1px solid rgba(245,158,11,.2)}
+.status-pending::before{background:var(--yellow);animation:pulse 1.5s infinite}
+.status-rejected{background:rgba(239,83,80,.12);color:var(--red);border:1px solid rgba(239,83,80,.2)}
+.status-rejected::before{background:var(--red)}
+.status-cancelled{background:rgba(75,85,99,.2);color:#9ca3af;border:1px solid rgba(75,85,99,.3)}
+.status-cancelled::before{background:#9ca3af}
+
+.action-cell{display:flex;align-items:center;gap:6px}
+.action-btn{background:none;border:1px solid var(--border);color:var(--text2);width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:14px;transition:.2s;display:flex;align-items:center;justify-content:center}
+.action-btn:hover.modify{border-color:var(--accent);color:var(--accent);background:rgba(41,98,255,.1)}
+.action-btn:hover.cancel{border-color:var(--red);color:var(--red);background:rgba(239,83,80,.1)}
+.action-btn:disabled{opacity:.3;cursor:default}
+
+/* ══ INLINE EDIT ══ */
+.inline-edit{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;padding:14px 16px;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;margin:4px 0;align-items:end}
+.ie-group{display:flex;flex-direction:column;gap:4px}
+.ie-label{font-size:9px;font-weight:600;letter-spacing:1px;color:var(--text2);text-transform:uppercase}
+.ie-input{background:var(--bg3);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:7px 10px;font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;transition:.2s;width:100%}
+.ie-input:focus{border-color:var(--accent)}
+.ie-actions{display:flex;gap:8px;justify-content:flex-end;padding:0 16px 14px;background:var(--bg4)}
+.ie-btn-save{background:var(--accent);border:none;color:#fff;padding:8px 20px;border-radius:6px;cursor:pointer;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;transition:.2s}
+.ie-btn-save:hover{background:var(--accent2)}
+.ie-btn-cancel{background:none;border:1px solid var(--border);color:var(--text2);padding:8px 16px;border-radius:6px;cursor:pointer;font-family:'Syne',sans-serif;font-size:12px;transition:.2s}
+.ie-btn-cancel:hover{border-color:var(--red);color:var(--red)}
+
+/* ══ SUMMARY BAR ══ */
+.summary-bar{padding:14px 20px;background:var(--bg3);border-top:1px solid var(--border);display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.summary-stat{display:flex;align-items:center;gap:8px}
+.summary-stat .s-label{font-size:11px;color:var(--text2);font-weight:500}
+.summary-stat .s-val{font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.summary-stat .s-val.green{color:var(--green)}
+.summary-stat .s-val.yellow{color:var(--yellow)}
+.summary-stat .s-val.red{color:var(--red)}
+.summary-divider{width:1px;height:28px;background:var(--border);flex-shrink:0}
+
+/* ══ FLOATING ORDER PANEL ══ */
+.order-panel{
+  position:fixed;top:var(--nav-h);right:0;width:var(--panel-w);
+  height:calc(100vh - var(--nav-h));
+  background:var(--bg2);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;z-index:100;
+  overflow-y:auto;
+  animation:slideInRight .35s ease;
+}
+.panel-header{
+  padding:16px 18px 14px;border-bottom:1px solid var(--border);
+  position:sticky;top:0;background:var(--bg2);z-index:10;
+}
+.panel-title{font-size:12px;font-weight:600;letter-spacing:1.5px;color:var(--text2);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.panel-title span{font-size:10px;font-family:'JetBrains Mono',monospace;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 6px;cursor:pointer;transition:.2s}
+.panel-title span:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Buy/Sell Toggle */
+.bs-toggle{display:grid;grid-template-columns:1fr 1fr;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.bs-btn{padding:10px;text-align:center;cursor:pointer;font-size:14px;font-weight:700;letter-spacing:.5px;transition:.25s;position:relative;overflow:hidden;user-select:none}
+.bs-btn.buy{color:var(--text2)}
+.bs-btn.buy.active{background:var(--green);color:#fff;box-shadow:0 0 20px rgba(38,166,154,.35)}
+.bs-btn.sell{color:var(--text2)}
+.bs-btn.sell.active{background:var(--red);color:#fff;box-shadow:0 0 20px rgba(239,83,80,.35)}
+.bs-btn .ripple-el{position:absolute;border-radius:50%;background:rgba(255,255,255,.3);pointer-events:none;animation:ripple .6s ease-out forwards;width:100px;height:100px;margin:-50px}
+
+/* Panel body */
+.panel-body{padding:16px 18px;display:flex;flex-direction:column;gap:14px;flex:1}
+.field-group{display:flex;flex-direction:column;gap:5px}
+.field-label{font-size:10px;font-weight:600;letter-spacing:1px;color:var(--text2);text-transform:uppercase;display:flex;align-items:center;justify-content:space-between}
+.field-label small{font-size:9px;color:var(--text3);text-transform:none;letter-spacing:0}
+.field-input{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;transition:.2s;width:100%}
+.field-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(41,98,255,.12)}
+.field-input::placeholder{color:var(--text3)}
+.field-input:disabled{opacity:.4;cursor:not-allowed}
+
+/* Symbol autocomplete */
+.symbol-wrap{position:relative}
+.autocomplete{
+  position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:var(--bg2);border:1px solid var(--border2);border-radius:8px;
+  overflow:hidden;z-index:300;display:none;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+.autocomplete.show{display:block}
+.ac-item{padding:10px 14px;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:space-between}
+.ac-item:hover{background:var(--bg3)}
+.ac-item .ac-sym{font-weight:700;font-size:13px;color:#fff}
+.ac-item .ac-name{font-size:11px;color:var(--text2);margin-top:1px}
+.ac-item .ac-price{font-family:'JetBrains Mono',monospace;font-size:12px;text-align:right}
+.ac-item .ac-price .chg-pos{color:var(--green);font-size:10px}
+.ac-item .ac-price .chg-neg{color:var(--red);font-size:10px}
+
+/* Pill toggles */
+.pill-toggle{display:flex;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:4px}
+.pill-btn{flex:1;padding:7px 4px;text-align:center;border-radius:5px;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--text2);transition:.2s;font-family:'JetBrains Mono',monospace}
+.pill-btn:hover{color:var(--text)}
+.pill-btn.active{background:var(--bg4);color:#fff;border:1px solid var(--border2);box-shadow:0 2px 6px rgba(0,0,0,.3)}
+
+/* Qty stepper */
+.qty-stepper{display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.step-btn{background:var(--bg3);border:none;color:var(--text2);width:38px;height:42px;cursor:pointer;font-size:18px;font-weight:300;transition:.2s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-btn:hover{background:var(--bg4);color:var(--text)}
+.step-btn:active{background:var(--border)}
+.qty-input{flex:1;background:var(--bg);border:none;border-left:1px solid var(--border);border-right:1px solid var(--border);color:var(--text);text-align:center;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;outline:none;height:42px;min-width:0}
+.qty-input::-webkit-outer-spin-button,.qty-input::-webkit-inner-spin-button{-webkit-appearance:none}
+
+/* Margin info */
+.margin-box{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.margin-row{display:flex;justify-content:space-between;align-items:center}
+.margin-row .m-key{font-size:11px;color:var(--text2)}
+.margin-row .m-val{font-size:13px;font-weight:600;font-family:'JetBrains Mono',monospace;color:#fff}
+.margin-row .m-val.warn{color:var(--yellow)}
+.margin-divider{height:1px;background:var(--border)}
+.available-bar{height:4px;border-radius:2px;background:var(--border);overflow:hidden}
+.available-fill{height:100%;border-radius:2px;background:var(--green);transition:width .5s ease}
+
+/* Confirm button */
+.confirm-btn{
+  padding:14px;border:none;border-radius:8px;cursor:pointer;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:800;letter-spacing:.5px;
+  color:#fff;transition:.25s;position:relative;overflow:hidden;
+  text-transform:uppercase;
+}
+.confirm-btn.buy-btn{background:linear-gradient(135deg,var(--green),#1d8078);box-shadow:0 4px 15px rgba(38,166,154,.3)}
+.confirm-btn.buy-btn:hover{box-shadow:0 6px 20px rgba(38,166,154,.5);transform:translateY(-1px)}
+.confirm-btn.sell-btn{background:linear-gradient(135deg,var(--red),#c62828);box-shadow:0 4px 15px rgba(239,83,80,.3)}
+.confirm-btn.sell-btn:hover{box-shadow:0 6px 20px rgba(239,83,80,.5);transform:translateY(-1px)}
+.confirm-btn:active{transform:translateY(0)!important}
+
+/* Keyboard shortcuts */
+.kbd-hints{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.kbd-hint{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text3)}
+.kbd{background:var(--bg3);border:1px solid var(--border);border-radius:3px;padding:1px 6px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2)}
+
+/* Toast */
+.toast-container{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:500;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:12px 20px;font-size:13px;font-weight:600;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.5);display:flex;align-items:center;gap:10px;animation:orderSuccess .4s ease;white-space:nowrap}
+.toast.success{border-color:rgba(38,166,154,.4);background:rgba(38,166,154,.15)}
+.toast.error{border-color:rgba(239,83,80,.4);background:rgba(239,83,80,.15)}
+.toast.info{border-color:rgba(41,98,255,.4);background:rgba(41,98,255,.15)}
+
+/* Empty state */
+.empty-state{padding:48px;text-align:center;color:var(--text2)}
+.empty-icon{font-size:40px;margin-bottom:12px;opacity:.3}
+.empty-text{font-size:14px;margin-bottom:4px}
+.empty-sub{font-size:12px;color:var(--text3)}
+
+/* Mobile panel toggle */
+.panel-fab{display:none;position:fixed;bottom:80px;right:20px;z-index:250;background:var(--accent);border:none;color:#fff;width:52px;height:52px;border-radius:50%;font-size:22px;cursor:pointer;box-shadow:0 4px 20px rgba(41,98,255,.5);transition:.2s}
+.panel-fab:hover{transform:scale(1.1)}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.footer-left{font-size:12px;color:var(--text2)}
+.footer-left strong{color:var(--text)}
+.footer-links{display:flex;gap:16px}
+.footer-links a{font-size:12px;color:var(--text2);text-decoration:none;transition:.2s}
+.footer-links a:hover{color:var(--accent)}
+.footer-right{font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace}
+.footer-disc{font-size:10px;color:var(--text3);padding:8px 24px 10px;border-top:1px solid var(--border);background:var(--bg2)}
+
+/* ══ RESPONSIVE ══ */
+@media(max-width:1100px){
+  :root{--panel-w:300px}
+}
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .layout{margin-left:0!important;margin-right:0!important}
+  .hamburger{display:flex}
+  .nav-links{display:none}
+  .order-panel{transform:translateX(100%);transition:transform .3s ease}
+  .order-panel.open{transform:translateX(0)}
+  .panel-fab{display:flex;align-items:center;justify-content:center}
+}
+@media(max-width:600px){
+  .content{padding:12px}
+  .summary-bar{gap:14px}
+  .tab-btn{padding:10px 12px;font-size:12px}
+}
+aside a {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+</style>
+</head>
+<body>
+
+<!-- ══ NAVBAR ══ -->
+<nav class="navbar">
+  <div class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></div>
+  <div class="nav-logo">Market<em>Edge</em></div>
+   <div class="nav-links">
+  <a href="page1-dashboard.html">Dashboard</a>
+  <a href="page2-charts.html">Charts</a>
+  <a href="page3-screener.html">Screener</a>
+  <a href="page4-options.html">Options</a>
+  <a href="page5-orders.html">Orders</a>
+  <a href="page6-portfolio.html">Portfolio</a>
+  <a href="page7-watchlist.html">Watchlist</a>
+  <a href="page8-paper-trading.html">Paper Trade</a>
+  <a href="page9-ai-assistant.html">AI Assistant</a>
+</div>
+  <div class="nav-spacer"></div>
+  <div class="nav-right">
+    <div class="nav-chip">MARKET OPEN</div>
+    <div class="nav-kbd" title="Press B to Buy, S to Sell" onclick="showToast('Shortcuts: B = Buy · S = Sell · Esc = Cancel','info')">⌨ Shortcuts</div>
+    <div class="nav-avatar">AK</div>
+  </div>
+</nav>
+
+<!-- SIDEBAR -->
+<aside>
+  <a href="page1-dashboard.html"><div class="side-btn" title="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div></a>
+
+  <a href="page2-charts.html"><div class="side-btn" title="Charts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></a>
+
+  <a href="page3-screener.html"><div class="side-btn" title="Screener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div></a>
+
+  <div class="side-div"></div>
+
+  <a href="page6-portfolio.html"><div class="side-btn" title="Portfolio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div></a>
+
+  <a href="page9-ai-assistant.html"><div class="side-btn" title="AI Bot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M12 12v2"/><rect x="8" y="14" width="8" height="6" rx="2"/><line x1="9" y1="17" x2="9" y2="17"/><line x1="15" y1="17" x2="15" y2="17"/></svg></div></a>
+
+  <div class="side-div"></div>
+
+  <a href="#"><div class="side-btn" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div></a>
+</aside>
+
+<!-- ══ MAIN LAYOUT ══ -->
+<div class="layout" id="layout">
+<div class="content">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="breadcrumb"><a href="#">Home</a><span>›</span><span>Order Management</span></div>
+    <div class="page-title">Order Book <span class="page-title-badge">NSE · BSE</span></div>
+    <div class="page-sub">All orders for this trading session · Auto-refreshes every 5s</div>
+  </div>
+
+  <!-- Orders Card -->
+  <div class="orders-card">
+    <div class="orders-header">
+      <div class="tabs-wrap">
+        <div class="tab-btn active" onclick="switchTab(this,'today')">Today's Orders <span class="tab-count" id="tc-today">8</span></div>
+        <div class="tab-btn" onclick="switchTab(this,'pending')">Pending <span class="tab-count" id="tc-pending">2</span></div>
+        <div class="tab-btn" onclick="switchTab(this,'gtt')">GTT Orders <span class="tab-count" id="tc-gtt">3</span></div>
+      </div>
+    </div>
+
+    <div class="orders-actions">
+      <div class="search-filter">
+        <span class="filter-icon">⌕</span>
+        <input type="text" placeholder="Search symbol or order ID..." oninput="filterOrders(this.value)">
+      </div>
+      <button class="refresh-btn" onclick="refreshOrders()">↻ Refresh</button>
+      <div style="margin-left:auto;font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace" id="lastRefresh">Last: just now</div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="orders-tbl">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Symbol</th>
+            <th>Type</th>
+            <th>Product</th>
+            <th>Qty</th>
+            <th>Price</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="ordersBody"></tbody>
+      </table>
+    </div>
+
+    <div class="summary-bar" id="summaryBar"></div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- Footer -->
+<footer>
+  <div class="footer-left"><strong>MarketEdge</strong> © 2025 — All Rights Reserved</div>
+  <div class="footer-links">
+    <a href="#">Terms</a><a href="#">Privacy</a><a href="#">Disclaimer</a><a href="#">Support</a>
+  </div>
+  <div class="footer-right">v5.0.1 · NSE · BSE · MCX</div>
+</footer>
+<div class="footer-disc">⚠ Investments in securities market are subject to market risks. Read all related documents carefully before investing. MarketEdge is not a SEBI-registered investment advisor.</div>
+</div><!-- /layout -->
+
+<!-- ══ FLOATING ORDER PANEL ══ -->
+<aside class="order-panel" id="orderPanel">
+  <div class="panel-header">
+    <div class="panel-title">
+      New Order
+      <span onclick="togglePanel()" title="Hide panel">✕</span>
+    </div>
+    <div class="bs-toggle">
+      <div class="bs-btn buy active" id="buyBtn" onclick="setBuySell('buy')">BUY</div>
+      <div class="bs-btn sell" id="sellBtn" onclick="setBuySell('sell')">SELL</div>
+    </div>
+  </div>
+
+  <div class="panel-body">
+
+    <!-- Symbol Search -->
+    <div class="field-group">
+      <div class="field-label">Symbol <small>NSE/BSE</small></div>
+      <div class="symbol-wrap">
+        <input type="text" class="field-input" id="symbolInput" placeholder="Search symbol..." autocomplete="off" oninput="onSymbolInput(this.value)" onblur="hideAC()">
+        <div class="autocomplete" id="acDropdown"></div>
+      </div>
+    </div>
+
+    <!-- Product Type -->
+    <div class="field-group">
+      <div class="field-label">Product Type</div>
+      <div class="pill-toggle">
+        <div class="pill-btn active" onclick="setPill(this,'product')">MIS</div>
+        <div class="pill-btn" onclick="setPill(this,'product')">CNC</div>
+        <div class="pill-btn" onclick="setPill(this,'product')">NRML</div>
+      </div>
+    </div>
+
+    <!-- Order Type -->
+    <div class="field-group">
+      <div class="field-label">Order Type</div>
+      <div class="pill-toggle" id="orderTypePill">
+        <div class="pill-btn active" onclick="setOrderType(this,'market')">MKT</div>
+        <div class="pill-btn" onclick="setOrderType(this,'limit')">LMT</div>
+        <div class="pill-btn" onclick="setOrderType(this,'sl')">SL</div>
+        <div class="pill-btn" onclick="setOrderType(this,'slm')">SL-M</div>
+      </div>
+    </div>
+
+    <!-- Quantity -->
+    <div class="field-group">
+      <div class="field-label">Quantity <small>Shares</small></div>
+      <div class="qty-stepper">
+        <button class="step-btn" onclick="stepQty(-1)">−</button>
+        <input type="number" class="qty-input" id="qtyInput" value="10" min="1" onchange="updateMargin()">
+        <button class="step-btn" onclick="stepQty(1)">+</button>
+      </div>
+    </div>
+
+    <!-- Price -->
+    <div class="field-group" id="priceGroup">
+      <div class="field-label">Price (₹)</div>
+      <input type="number" class="field-input" id="priceInput" placeholder="Enter price" value="" step="0.05" onchange="updateMargin()">
+    </div>
+
+    <!-- Trigger Price (SL only) -->
+    <div class="field-group" id="triggerGroup" style="display:none">
+      <div class="field-label">Trigger Price (₹)</div>
+      <input type="number" class="field-input" id="triggerInput" placeholder="Enter trigger" step="0.05">
+    </div>
+
+    <!-- Margin Info -->
+    <div class="margin-box" id="marginBox">
+      <div class="margin-row">
+        <span class="m-key">Estimated Margin</span>
+        <span class="m-val" id="estMargin">—</span>
+      </div>
+      <div class="margin-row">
+        <span class="m-key">Available Margin</span>
+        <span class="m-val" id="availMargin">₹1,85,400</span>
+      </div>
+      <div class="margin-divider"></div>
+      <div class="available-bar">
+        <div class="available-fill" id="marginFill" style="width:100%"></div>
+      </div>
+      <div class="margin-row" style="margin-top:2px">
+        <span class="m-key" style="font-size:10px">Margin used after order</span>
+        <span class="m-val warn" id="marginAfter">—</span>
+      </div>
+    </div>
+
+    <!-- Confirm Button -->
+    <button class="confirm-btn buy-btn" id="confirmBtn" onclick="placeOrder()">
+      BUY ORDER
+    </button>
+
+    <!-- Keyboard hints -->
+    <div class="kbd-hints">
+      <div class="kbd-hint"><kbd class="kbd">B</kbd> Buy</div>
+      <div class="kbd-hint"><kbd class="kbd">S</kbd> Sell</div>
+      <div class="kbd-hint"><kbd class="kbd">Esc</kbd> Cancel</div>
+      <div class="kbd-hint"><kbd class="kbd">Enter</kbd> Place</div>
+    </div>
+
+  </div><!-- /panel-body -->
+</aside>
+
+<!-- Mobile FAB -->
+<button class="panel-fab" id="panelFab" onclick="togglePanel()" title="New Order">＋</button>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ══ JAVASCRIPT ══ -->
+<script>
+// ════════════════════════════════════════
+// SAMPLE DATA
+// ════════════════════════════════════════
+const NSE_STOCKS=[
+  {sym:'RELIANCE',name:'Reliance Industries Ltd',price:2941.50,chg:+1.23},
+  {sym:'TCS',name:'Tata Consultancy Services',price:3780.25,chg:-0.45},
+  {sym:'INFY',name:'Infosys Ltd',price:1680.10,chg:+0.87},
+  {sym:'HDFCBANK',name:'HDFC Bank Ltd',price:1624.35,chg:-1.12},
+  {sym:'ICICIBANK',name:'ICICI Bank Ltd',price:1102.80,chg:+2.05},
+  {sym:'BHARTIARTL',name:'Bharti Airtel Ltd',price:1485.60,chg:+0.34},
+  {sym:'ITC',name:'ITC Ltd',price:472.15,chg:-0.21},
+  {sym:'SBIN',name:'State Bank of India',price:782.90,chg:+1.54},
+  {sym:'WIPRO',name:'Wipro Ltd',price:556.40,chg:+0.72},
+  {sym:'HCLTECH',name:'HCL Technologies Ltd',price:1542.35,chg:-0.63},
+  {sym:'NIFTY',name:'Nifty 50 Index',price:22147.90,chg:+0.31},
+  {sym:'BANKNIFTY',name:'Bank Nifty Index',price:47832.15,chg:-0.18},
+  {sym:'TATAMOTORS',name:'Tata Motors Ltd',price:924.75,chg:+3.21},
+  {sym:'AXISBANK',name:'Axis Bank Ltd',price:1076.40,chg:+1.08},
+  {sym:'KOTAKBANK',name:'Kotak Mahindra Bank',price:1803.25,chg:-0.57},
+  {sym:'SUNPHARMA',name:'Sun Pharmaceutical',price:1658.90,chg:+2.14},
+  {sym:'BAJFINANCE',name:'Bajaj Finance Ltd',price:7234.50,chg:-1.34},
+  {sym:'HINDUNILVR',name:'Hindustan Unilever',price:2356.80,chg:+0.45},
+  {sym:'MARUTI',name:'Maruti Suzuki India',price:12478.25,chg:+0.91},
+  {sym:'ADANIENT',name:'Adani Enterprises',price:2564.30,chg:-2.15},
+];
+
+const ORDERS=[
+  {id:'ORD001',time:'09:15:32',sym:'RELIANCE',exch:'NSE',type:'BUY',product:'MIS',qty:50,price:2938.50,status:'EXECUTED',ordType:'LIMIT'},
+  {id:'ORD002',time:'09:22:18',sym:'TCS',exch:'NSE',type:'SELL',product:'CNC',qty:20,price:3785.00,status:'EXECUTED',ordType:'LIMIT'},
+  {id:'ORD003',time:'09:35:47',sym:'INFY',exch:'NSE',type:'BUY',product:'MIS',qty:100,price:0,status:'EXECUTED',ordType:'MARKET'},
+  {id:'ORD004',time:'10:02:11',sym:'HDFCBANK',exch:'NSE',type:'BUY',product:'CNC',qty:30,price:1620.00,status:'PENDING',ordType:'LIMIT'},
+  {id:'ORD005',time:'10:18:55',sym:'ICICIBANK',exch:'NSE',type:'SELL',product:'MIS',qty:75,price:1108.50,status:'PENDING',ordType:'SL'},
+  {id:'ORD006',time:'10:45:23',sym:'BHARTIARTL',exch:'NSE',type:'BUY',product:'NRML',qty:200,price:1480.00,status:'REJECTED',ordType:'LIMIT'},
+  {id:'ORD007',time:'11:12:09',sym:'SBIN',exch:'NSE',type:'SELL',product:'MIS',qty:150,price:780.00,status:'CANCELLED',ordType:'LIMIT'},
+  {id:'ORD008',time:'11:30:44',sym:'WIPRO',exch:'NSE',type:'BUY',product:'CNC',qty:80,price:554.25,status:'EXECUTED',ordType:'LIMIT'},
+];
+
+const GTT_ORDERS=[
+  {id:'GTT001',time:'Yesterday',sym:'TATAMOTORS',exch:'NSE',type:'BUY',product:'CNC',qty:100,price:900.00,status:'PENDING',ordType:'GTT'},
+  {id:'GTT002',time:'Yesterday',sym:'BAJFINANCE',exch:'NSE',type:'SELL',product:'CNC',qty:10,price:7500.00,status:'PENDING',ordType:'GTT'},
+  {id:'GTT003',time:'2 days ago',sym:'MARUTI',exch:'NSE',type:'BUY',product:'CNC',qty:5,price:12000.00,status:'PENDING',ordType:'GTT'},
+];
+
+let currentTab='today';
+let editingRow=null;
+let orderMode='buy';
+let orderType='market';
+let selectedStock=null;
+let availableMargin=185400;
+let allOrders=[...ORDERS];
+let filterQuery='';
+
+// ════════════════════════════════════════
+// ORDERS TABLE RENDER
+// ════════════════════════════════════════
+function getTabOrders(){
+  let list=currentTab==='gtt'?GTT_ORDERS:allOrders;
+  if(filterQuery){
+    const q=filterQuery.toLowerCase();
+    list=list.filter(o=>o.sym.toLowerCase().includes(q)||o.id.toLowerCase().includes(q)||o.status.toLowerCase().includes(q));
+  }
+  return list;
+}
+
+function renderOrders(){
+  const body=document.getElementById('ordersBody');
+  const orders=getTabOrders();
+  if(orders.length===0){
+    body.innerHTML=`<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">No orders found</div><div class="empty-sub">Orders will appear here once placed</div></div></td></tr>`;
+    renderSummary();return;
+  }
+  body.innerHTML='';
+  orders.forEach((o,i)=>{
+    const canModify=o.status==='PENDING';
+    const canCancel=o.status==='PENDING';
+    const priceStr=o.price>0?`₹${o.price.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}`:'MKT';
+    const tr=document.createElement('tr');
+    tr.id='row-'+o.id;
+    tr.style.animationDelay=(i*0.05)+'s';
+    tr.innerHTML=`
+      <td><div class="time-cell">${o.time}</div></td>
+      <td><div class="symbol-cell">${o.sym}<span class="exch">${o.exch}</span></div><div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">${o.ordType}</div></td>
+      <td><span class="type-badge ${o.type==='BUY'?'type-buy':'type-sell'}">${o.type}</span></td>
+      <td><span class="product-tag">${o.product}</span></td>
+      <td><span class="qty-cell">${o.qty}</span></td>
+      <td class="price-cell">${priceStr}</td>
+      <td>${statusBadge(o.status)}</td>
+      <td>
+        <div class="action-cell">
+          <button class="action-btn modify" title="Modify" onclick="startEdit('${o.id}')" ${canModify?'':'disabled'}>✏</button>
+          <button class="action-btn cancel" title="Cancel" onclick="cancelOrder('${o.id}')" ${canCancel?'':'disabled'}>✕</button>
+        </div>
+      </td>`;
+    body.appendChild(tr);
+    if(editingRow===o.id&&canModify){
+      const editTr=document.createElement('tr');
+      editTr.className='inline-edit-row';
+      editTr.id='edit-row-'+o.id;
+      editTr.innerHTML=`<td colspan="8">
+        <div class="inline-edit">
+          <div class="ie-group"><div class="ie-label">Qty</div><input class="ie-input" id="ie-qty-${o.id}" type="number" value="${o.qty}" min="1"></div>
+          <div class="ie-group"><div class="ie-label">Price (₹)</div><input class="ie-input" id="ie-price-${o.id}" type="number" value="${o.price||''}" step="0.05" placeholder="MKT"></div>
+          <div class="ie-group"><div class="ie-label">Order Type</div>
+            <select class="ie-input" id="ie-type-${o.id}">
+              <option ${o.ordType==='MARKET'?'selected':''}>MARKET</option>
+              <option ${o.ordType==='LIMIT'?'selected':''}>LIMIT</option>
+              <option ${o.ordType==='SL'?'selected':''}>SL</option>
+              <option ${o.ordType==='SL-M'?'selected':''}>SL-M</option>
+            </select>
+          </div>
+        </div>
+        <div class="ie-actions">
+          <button class="ie-btn-cancel" onclick="cancelEdit()">Cancel</button>
+          <button class="ie-btn-save" onclick="saveEdit('${o.id}')">Save Changes</button>
+        </div>
+      </td>`;
+      body.appendChild(editTr);
+    }
+  });
+  renderSummary();
+}
+
+function statusBadge(s){
+  const map={EXECUTED:'status-executed',PENDING:'status-pending',REJECTED:'status-rejected',CANCELLED:'status-cancelled'};
+  return `<span class="status-badge ${map[s]||''}">${s}</span>`;
+}
+
+function renderSummary(){
+  const orders=currentTab==='gtt'?GTT_ORDERS:allOrders;
+  const total=orders.length;
+  const exec=orders.filter(o=>o.status==='EXECUTED').length;
+  const pend=orders.filter(o=>o.status==='PENDING').length;
+  const rej=orders.filter(o=>o.status==='REJECTED').length;
+  const canc=orders.filter(o=>o.status==='CANCELLED').length;
+  document.getElementById('summaryBar').innerHTML=`
+    <div class="summary-stat"><span class="s-label">Total Orders</span><span class="s-val">${total}</span></div>
+    <div class="summary-divider"></div>
+    <div class="summary-stat"><span class="s-label">Executed</span><span class="s-val green">${exec}</span></div>
+    <div class="summary-divider"></div>
+    <div class="summary-stat"><span class="s-label">Pending</span><span class="s-val yellow">${pend}</span></div>
+    <div class="summary-divider"></div>
+    <div class="summary-stat"><span class="s-label">Rejected</span><span class="s-val red">${rej}</span></div>
+    <div class="summary-divider"></div>
+    <div class="summary-stat"><span class="s-label">Cancelled</span><span class="s-val" style="color:var(--text2)">${canc}</span></div>
+  `;
+}
+
+function switchTab(el,tab){
+  document.querySelectorAll('.tab-btn').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentTab=tab;
+  editingRow=null;
+  renderOrders();
+}
+
+function filterOrders(q){filterQuery=q;renderOrders()}
+
+function startEdit(id){
+  editingRow=editingRow===id?null:id;
+  renderOrders();
+  if(editingRow){
+    setTimeout(()=>{const el=document.getElementById('edit-row-'+id);if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'})},100);
+  }
+}
+function cancelEdit(){editingRow=null;renderOrders()}
+
+function saveEdit(id){
+  const qty=parseInt(document.getElementById('ie-qty-'+id).value)||0;
+  const price=parseFloat(document.getElementById('ie-price-'+id).value)||0;
+  const type=document.getElementById('ie-type-'+id).value;
+  if(qty<1){showToast('Quantity must be at least 1','error');return}
+  const o=allOrders.find(o=>o.id===id);
+  if(o){o.qty=qty;o.price=price;o.ordType=type}
+  editingRow=null;
+  showToast('✓ Order #'+id+' modified successfully','success');
+  renderOrders();
+}
+
+function cancelOrder(id){
+  const o=allOrders.find(o=>o.id===id);
+  if(o){o.status='CANCELLED';editingRow=null}
+  showToast('Order #'+id+' cancelled','info');
+  renderOrders();
+}
+
+function refreshOrders(){
+  renderOrders();
+  document.getElementById('lastRefresh').textContent='Last: just now';
+  showToast('↻ Orders refreshed','info');
+}
+
+// ════════════════════════════════════════
+// ORDER PANEL
+// ════════════════════════════════════════
+function setBuySell(mode){
+  orderMode=mode;
+  document.getElementById('buyBtn').classList.toggle('active',mode==='buy');
+  document.getElementById('sellBtn').classList.toggle('active',mode==='sell');
+  const btn=document.getElementById('confirmBtn');
+  btn.className='confirm-btn '+(mode==='buy'?'buy-btn':'sell-btn');
+  btn.textContent=(mode==='buy'?'BUY':'SELL')+' ORDER';
+  updateMargin();
+}
+
+function setOrderType(el,type){
+  orderType=type;
+  document.querySelectorAll('#orderTypePill .pill-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  const priceGrp=document.getElementById('priceGroup');
+  const trigGrp=document.getElementById('triggerGroup');
+  priceGrp.style.display=type==='market'?'none':'block';
+  trigGrp.style.display=(type==='sl'||type==='slm')?'block':'none';
+  if(type==='market'){document.getElementById('priceInput').value=''}
+  updateMargin();
+}
+
+function setPill(el,grp){
+  el.closest('.pill-toggle').querySelectorAll('.pill-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  updateMargin();
+}
+
+function stepQty(delta){
+  const input=document.getElementById('qtyInput');
+  input.value=Math.max(1,(parseInt(input.value)||0)+delta);
+  updateMargin();
+}
+
+function updateMargin(){
+  const qty=parseInt(document.getElementById('qtyInput').value)||0;
+  let price=parseFloat(document.getElementById('priceInput').value)||0;
+  if(orderType==='market'&&selectedStock) price=selectedStock.price;
+  if(!price||!qty){
+    document.getElementById('estMargin').textContent='—';
+    document.getElementById('marginAfter').textContent='—';
+    document.getElementById('marginFill').style.width='100%';
+    return;
+  }
+  // Simplified margin: ~20% for MIS, 100% for CNC
+  const prodEl=document.querySelector('[onclick*="product"].active');
+  const prod=prodEl?prodEl.textContent:'MIS';
+  const factor=prod==='CNC'?1:prod==='NRML'?0.5:0.2;
+  const margin=Math.round(qty*price*factor);
+  const pct=Math.min(100,Math.round(margin/availableMargin*100));
+  const remaining=availableMargin-margin;
+  document.getElementById('estMargin').textContent='₹'+margin.toLocaleString('en-IN');
+  document.getElementById('marginAfter').textContent=(remaining>=0?'₹'+remaining.toLocaleString('en-IN'):'⚠ Insufficient');
+  document.getElementById('marginFill').style.width=Math.max(0,100-pct)+'%';
+  document.getElementById('marginFill').style.background=pct>80?'var(--red)':pct>60?'var(--yellow)':'var(--green)';
+}
+
+function placeOrder(){
+  const sym=document.getElementById('symbolInput').value.trim();
+  const qty=parseInt(document.getElementById('qtyInput').value)||0;
+  if(!sym){showToast('⚠ Please select a symbol','error');document.getElementById('symbolInput').focus();return}
+  if(qty<1){showToast('⚠ Quantity must be ≥ 1','error');return}
+  let price=parseFloat(document.getElementById('priceInput').value)||0;
+  if(orderType!=='market'&&price<=0){showToast('⚠ Please enter a valid price','error');return}
+
+  const now=new Date();
+  const timeStr=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0')+':'+now.getSeconds().toString().padStart(2,'0');
+  const newOrder={
+    id:'ORD'+String(Date.now()).slice(-5),
+    time:timeStr,sym:sym.toUpperCase(),exch:'NSE',
+    type:orderMode.toUpperCase(),product:'MIS',qty,price,
+    status:'PENDING',ordType:orderType.toUpperCase()
+  };
+  allOrders.unshift(newOrder);
+  currentTab='today';
+  document.querySelectorAll('.tab-btn')[0].click();
+  showToast('✓ Order placed: '+orderMode.toUpperCase()+' '+qty+' '+sym.toUpperCase(),'success');
+  updateTabCounts();
+  renderOrders();
+
+  // Reset some fields
+  document.getElementById('symbolInput').value='';
+  document.getElementById('qtyInput').value='10';
+  selectedStock=null;
+  updateMargin();
+}
+
+function updateTabCounts(){
+  document.getElementById('tc-today').textContent=allOrders.length;
+  document.getElementById('tc-pending').textContent=allOrders.filter(o=>o.status==='PENDING').length;
+}
+
+// ════════════════════════════════════════
+// AUTOCOMPLETE
+// ════════════════════════════════════════
+let acTimeout;
+function onSymbolInput(val){
+  clearTimeout(acTimeout);
+  const ac=document.getElementById('acDropdown');
+  if(!val||val.length<1){ac.classList.remove('show');return}
+  acTimeout=setTimeout(()=>{
+    const q=val.toLowerCase();
+    const hits=NSE_STOCKS.filter(s=>s.sym.toLowerCase().includes(q)||s.name.toLowerCase().includes(q)).slice(0,6);
+    if(!hits.length){ac.classList.remove('show');return}
+    ac.innerHTML=hits.map(s=>{
+      const chgCls=s.chg>=0?'chg-pos':'chg-neg';
+      const sign=s.chg>=0?'+':'';
+      return `<div class="ac-item" onmousedown="selectStock('${s.sym}')">
+        <div><div class="ac-sym">${s.sym}</div><div class="ac-name">${s.name}</div></div>
+        <div class="ac-price">₹${s.price.toLocaleString('en-IN',{minimumFractionDigits:2})}<br><span class="${chgCls}">${sign}${s.chg}%</span></div>
+      </div>`;
+    }).join('');
+    ac.classList.add('show');
+  },120);
+}
+
+function selectStock(sym){
+  const s=NSE_STOCKS.find(x=>x.sym===sym);
+  if(!s) return;
+  selectedStock=s;
+  document.getElementById('symbolInput').value=sym;
+  if(orderType!=='market') document.getElementById('priceInput').value=s.price.toFixed(2);
+  document.getElementById('acDropdown').classList.remove('show');
+  updateMargin();
+}
+
+function hideAC(){setTimeout(()=>document.getElementById('acDropdown').classList.remove('show'),200)}
+
+// ════════════════════════════════════════
+// SIDEBAR / PANEL TOGGLE
+// ════════════════════════════════════════
+let sidebarOpen=true;
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  if(window.innerWidth<=900){sb.classList.toggle('open')}
+  else{
+    sidebarOpen=!sidebarOpen;
+    sb.classList.toggle('collapsed',!sidebarOpen);
+    document.getElementById('layout').classList.toggle('sidebar-collapsed',!sidebarOpen);
+  }
+}
+function collapseSidebar(){
+  sidebarOpen=false;
+  document.getElementById('sidebar').classList.add('collapsed');
+  document.getElementById('layout').classList.add('sidebar-collapsed');
+}
+
+let panelOpen=true;
+function togglePanel(){
+  const panel=document.getElementById('orderPanel');
+  const layout=document.getElementById('layout');
+  const fab=document.getElementById('panelFab');
+  panelOpen=!panelOpen;
+  panel.classList.toggle('open',panelOpen);
+  if(window.innerWidth>900){
+    layout.style.marginRight=panelOpen?'var(--panel-w)':'0';
+  }
+  fab.textContent=panelOpen?'✕':'＋';
+}
+
+// ════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════
+function showToast(msg,type='info'){
+  const c=document.getElementById('toastContainer');
+  const t=document.createElement('div');
+  t.className='toast '+type;
+  t.textContent=msg;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(10px)';t.style.transition='.3s';setTimeout(()=>t.remove(),350)},3000);
+}
+
+// ════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  const active=document.activeElement;
+  const isInput=active&&(active.tagName==='INPUT'||active.tagName==='SELECT'||active.tagName==='TEXTAREA');
+  if(isInput) return;
+  if(e.key==='b'||e.key==='B'){setBuySell('buy');document.getElementById('symbolInput').focus()}
+  if(e.key==='s'||e.key==='S'){setBuySell('sell');document.getElementById('symbolInput').focus()}
+  if(e.key==='Escape'){if(editingRow){cancelEdit()}else{document.getElementById('symbolInput').blur()}}
+  if(e.key==='Enter'&&selectedStock){placeOrder()}
+});
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+window.addEventListener('load',()=>{
+  renderOrders();
+  updateTabCounts();
+  setOrderType(document.querySelector('#orderTypePill .pill-btn'),'market');
+  // Auto-refresh every 5s (cosmetic)
+  let lastRefreshSec=0;
+  setInterval(()=>{
+    lastRefreshSec+=5;
+    const el=document.getElementById('lastRefresh');
+    if(el) el.textContent=`Last: ${lastRefreshSec}s ago`;
+  },5000);
+});
+</script>
+</body>
+</html>

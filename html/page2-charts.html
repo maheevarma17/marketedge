@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MarketEdge — Charts</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#0d1117;--bg2:#131722;--bg3:#1c2333;--bg4:#1e2a3a;--border:#2a3550;--accent:#2962FF;--accent2:#00bcd4;--green:#26a69a;--red:#ef5350;--text:#d1d4dc;--text2:#787b86;--text3:#9ba3af;--gold:#f0b429;--font-ui:'Syne',sans-serif;--font-mono:'JetBrains Mono',monospace;}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-ui);display:flex;flex-direction:column;}
+.up{color:var(--green);}.dn{color:var(--red);}
+
+/* TICKER */
+.ticker-wrap{background:var(--bg2);border-bottom:1px solid var(--border);height:34px;overflow:hidden;position:relative;flex-shrink:0;}
+.ticker-wrap::before,.ticker-wrap::after{content:'';position:absolute;top:0;width:60px;height:100%;z-index:2;pointer-events:none;}
+.ticker-wrap::before{left:0;background:linear-gradient(90deg,var(--bg2),transparent);}
+.ticker-wrap::after{right:0;background:linear-gradient(-90deg,var(--bg2),transparent);}
+.ticker-inner{display:flex;align-items:center;height:100%;animation:scrollT 40s linear infinite;width:max-content;}
+@keyframes scrollT{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.t-item{display:flex;align-items:center;gap:7px;padding:0 18px;font-family:var(--font-mono);font-size:11px;border-right:1px solid var(--border);white-space:nowrap;}
+
+/* NAV */
+nav{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 18px;height:52px;display:flex;align-items:center;gap:12px;flex-shrink:0;z-index:50;}
+.logo{font-size:17px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px;flex-shrink:0;text-decoration:none;}
+.logo-icon{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.logo span{color:var(--accent);}
+.nav-links{display:flex;gap:1px;margin-left:4px;}
+.nav-link{padding:5px 10px;border-radius:6px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s;text-decoration:none;}
+.nav-link:hover{color:var(--text);background:var(--bg3);}
+.nav-link.active{color:var(--accent);background:rgba(41,98,255,.12);}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.market-pill{display:flex;align-items:center;gap:5px;background:rgba(38,166,154,.1);border:1px solid rgba(38,166,154,.3);border-radius:20px;padding:3px 9px;font-size:10px;font-weight:600;color:var(--green);font-family:var(--font-mono);}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;color:#fff;}
+
+/* LAYOUT */
+.app-body{display:flex;flex:1;overflow:hidden;}
+aside{width:52px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:3px;flex-shrink:0;}
+.side-btn{width:38px;height:38px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;color:var(--text2);}
+.side-btn:hover{background:var(--bg3);color:var(--text);}
+.side-btn.active{background:rgba(41,98,255,.15);color:var(--accent);}
+.side-btn svg{width:16px;height:16px;}
+.side-div{width:28px;height:1px;background:var(--border);margin:4px 0;}
+main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* TOOLBAR */
+.chart-toolbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:7px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;}
+.sym-search{position:relative;}
+.sym-input{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:6px 12px 6px 32px;color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none;width:195px;transition:all .2s;}
+.sym-input:focus{border-color:var(--accent);width:230px;}
+.sym-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text2);font-size:12px;pointer-events:none;}
+.sym-dropdown{position:absolute;top:calc(100%+4px);left:0;width:270px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;z-index:200;display:none;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.5);}
+.sym-dropdown.show{display:block;}
+.sym-dd-item{padding:9px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:background .12s;border-bottom:1px solid rgba(42,53,80,.4);}
+.sym-dd-item:last-child{border-bottom:none;}
+.sym-dd-item:hover{background:var(--bg4);}
+.sym-dd-name{font-family:var(--font-mono);font-size:12px;color:#fff;font-weight:600;}
+.sym-dd-full{font-size:10px;color:var(--text2);}
+.sep{width:1px;height:22px;background:var(--border);margin:0 2px;}
+.tf-group{display:flex;gap:1px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:2px;}
+.tf-btn{padding:4px 9px;border-radius:5px;font-size:11px;font-weight:600;font-family:var(--font-mono);cursor:pointer;color:var(--text2);border:none;background:none;transition:all .15s;}
+.tf-btn:hover{color:var(--text);}
+.tf-btn.active{background:var(--accent);color:#fff;}
+.ct-group{display:flex;gap:2px;}
+.ct-btn{width:28px;height:28px;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text2);border:1px solid transparent;font-size:14px;transition:all .15s;}
+.ct-btn:hover{background:var(--bg3);}
+.ct-btn.active{background:var(--bg3);border-color:var(--accent);color:var(--accent);}
+.ind-group{display:flex;gap:3px;}
+.ind-btn{padding:3px 8px;border-radius:5px;font-size:10px;font-weight:700;font-family:var(--font-mono);cursor:pointer;color:var(--text2);border:1px solid var(--border);background:var(--bg3);transition:all .15s;}
+.ind-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+.ind-btn.on{background:rgba(0,188,212,.12);border-color:var(--accent2);color:var(--accent2);}
+
+/* CHART AREA */
+.chart-area{flex:1;display:flex;overflow:hidden;position:relative;}
+.chart-wrap{flex:1;position:relative;overflow:hidden;}
+#mainCanvas{display:block;}
+
+/* OHLCV info overlay */
+.ohlcv-box{position:absolute;top:10px;left:60px;background:rgba(13,17,23,.88);border:1px solid var(--border);border-radius:7px;padding:7px 12px;font-family:var(--font-mono);font-size:11px;backdrop-filter:blur(6px);z-index:10;pointer-events:none;}
+.ohlcv-sym{font-size:13px;font-weight:700;color:#fff;margin-bottom:5px;}
+.ohlcv-row{display:flex;gap:14px;}
+.ohlcv-item label{font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:1px;}
+
+/* LEGEND */
+.legend-box{position:absolute;top:10px;right:12px;display:flex;gap:10px;font-size:10px;font-family:var(--font-mono);z-index:10;pointer-events:none;}
+.leg-item{display:flex;align-items:center;gap:4px;}
+.leg-color{width:12px;height:2px;border-radius:1px;}
+
+/* RIGHT RAIL */
+.right-rail{width:248px;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;transition:width .25s ease;}
+.right-rail.closed{width:0;overflow:hidden;}
+.rail-hdr{padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text);display:flex;justify-content:space-between;align-items:center;background:var(--bg3);flex-shrink:0;}
+.rail-sec{padding:12px 14px;border-bottom:1px solid var(--border);}
+.rail-lbl{font-size:9px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;}
+.kv{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:11px;border-bottom:1px solid rgba(42,53,80,.3);}
+.kv:last-child{border-bottom:none;}
+.kv span:first-child{color:var(--text2);font-family:var(--font-mono);}
+.kv span:last-child{color:#fff;font-family:var(--font-mono);font-weight:600;}
+.rating-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.rating-lbl{width:34px;font-size:10px;font-family:var(--font-mono);}
+.rbar{flex:1;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;}
+.rbar-fill{height:100%;border-radius:3px;}
+.rcount{width:18px;text-align:right;font-size:9px;font-family:var(--font-mono);color:var(--text3);}
+.sr-row{display:flex;justify-content:space-between;padding:4px 0;font-size:11px;font-family:var(--font-mono);border-bottom:1px solid rgba(42,53,80,.25);}
+.sr-row:last-child{border-bottom:none;}
+.draw-tools{position:absolute;left:6px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:3px;z-index:10;}
+.draw-btn{width:28px;height:28px;border-radius:5px;background:var(--bg2);border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:12px;transition:all .15s;}
+.draw-btn:hover,.draw-btn.on{background:var(--bg3);border-color:var(--accent);color:var(--accent);}
+
+/* STATS BAR */
+.stats-bar{background:var(--bg2);border-top:1px solid var(--border);padding:8px 14px;display:flex;align-items:center;gap:0;flex-shrink:0;overflow-x:auto;}
+.stat{display:flex;flex-direction:column;gap:2px;padding:0 16px;border-right:1px solid var(--border);flex-shrink:0;}
+.stat:first-child{padding-left:0;}
+.stat:last-child{border-right:none;}
+.stat-lbl{font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;font-family:var(--font-mono);}
+.stat-val{font-family:var(--font-mono);font-size:14px;font-weight:700;}
+.stat-sub{font-family:var(--font-mono);font-size:10px;}
+
+@media(max-width:900px){.right-rail{display:none;}.nav-links{display:none;}.ind-group{display:none;}}
+aside a {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+</style>
+</head>
+<body>
+
+<div class="ticker-wrap"><div class="ticker-inner" id="tickerInner"></div></div>
+
+<nav>
+  <a class="logo" href="page1-dashboard.html"><div class="logo-icon">📈</div>Market<span>Edge</span></a>
+  <div class="nav-links">
+  <a href="page1-dashboard.html">Dashboard</a>
+  <a href="page2-charts.html">Charts</a>
+  <a href="page3-screener.html">Screener</a>
+  <a href="page4-options.html">Options</a>
+  <a href="page5-orders.html">Orders</a>
+  <a href="page6-portfolio.html">Portfolio</a>
+  <a href="page7-watchlist.html">Watchlist</a>
+  <a href="page8-paper-trading.html">Paper Trade</a>
+  <a href="page9-ai-assistant.html">AI Assistant</a>
+</div>
+  <div class="nav-right">
+    <div class="market-pill"><div class="dot"></div>NSE LIVE</div>
+    <div class="avatar">AK</div>
+  </div>
+</nav>
+
+<div class="app-body">
+  <!-- SIDEBAR -->
+<aside>
+  <a href="page1-dashboard.html"><div class="side-btn" title="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div></a>
+
+  <a href="page2-charts.html"><div class="side-btn active" title="Charts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></a>
+
+  <a href="page3-screener.html"><div class="side-btn" title="Screener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div></a>
+
+  <div class="side-div"></div>
+
+  <a href="page6-portfolio.html"><div class="side-btn" title="Portfolio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div></a>
+
+  <a href="page9-ai-assistant.html"><div class="side-btn" title="AI Bot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M12 12v2"/><rect x="8" y="14" width="8" height="6" rx="2"/><line x1="9" y1="17" x2="9" y2="17"/><line x1="15" y1="17" x2="15" y2="17"/></svg></div></a>
+
+  <div class="side-div"></div>
+
+  <a href="#"><div class="side-btn" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div></a>
+</aside>
+
+  <main>
+    <!-- TOOLBAR -->
+    <div class="chart-toolbar">
+      <div class="sym-search">
+        <span class="sym-icon">🔍</span>
+        <input class="sym-input" id="symInput" type="text" placeholder="NSE:NIFTY" value="NSE:NIFTY" autocomplete="off"/>
+        <div class="sym-dropdown" id="symDropdown"></div>
+      </div>
+      <div class="sep"></div>
+      <div class="ct-group">
+        <div class="ct-btn active" title="Candle" onclick="setChartType(this,'candle')">🕯️</div>
+        <div class="ct-btn" title="Line" onclick="setChartType(this,'line')">📈</div>
+        <div class="ct-btn" title="Area" onclick="setChartType(this,'area')">🏔️</div>
+        <div class="ct-btn" title="Bar" onclick="setChartType(this,'bar')">📊</div>
+      </div>
+      <div class="sep"></div>
+      <div class="tf-group">
+        <button class="tf-btn" onclick="setTf(this,'1m')">1m</button>
+        <button class="tf-btn" onclick="setTf(this,'5m')">5m</button>
+        <button class="tf-btn" onclick="setTf(this,'15m')">15m</button>
+        <button class="tf-btn" onclick="setTf(this,'1H')">1H</button>
+        <button class="tf-btn" onclick="setTf(this,'4H')">4H</button>
+        <button class="tf-btn active" onclick="setTf(this,'1D')">1D</button>
+        <button class="tf-btn" onclick="setTf(this,'1W')">1W</button>
+        <button class="tf-btn" onclick="setTf(this,'1M')">1M</button>
+      </div>
+      <div class="sep"></div>
+      <div class="ind-group">
+        <div class="ind-btn" onclick="toggleInd(this,'RSI')">RSI</div>
+        <div class="ind-btn" onclick="toggleInd(this,'MACD')">MACD</div>
+        <div class="ind-btn on" onclick="toggleInd(this,'EMA20')">EMA20</div>
+        <div class="ind-btn on" onclick="toggleInd(this,'EMA50')">EMA50</div>
+        <div class="ind-btn" onclick="toggleInd(this,'BB')">BB</div>
+        <div class="ind-btn" onclick="toggleInd(this,'VWAP')">VWAP</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:6px;">
+        <div style="padding:5px 11px;border-radius:6px;background:rgba(38,166,154,.12);border:1px solid rgba(38,166,154,.3);color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-mono);" onclick="location.href='page9-ai-assistant.html'">🤖 Ask AI</div>
+        <div style="padding:5px 11px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-mono);" onclick="toggleRail()">⊞ Info</div>
+      </div>
+    </div>
+
+    <!-- CHART + RAIL -->
+    <div class="chart-area">
+      <div class="chart-wrap" id="chartWrap">
+        <div class="draw-tools">
+          <div class="draw-btn on" title="Select" onclick="setDraw(this)">↖</div>
+          <div class="draw-btn" title="Trend Line" onclick="setDraw(this)">╱</div>
+          <div class="draw-btn" title="H-Line" onclick="setDraw(this)">—</div>
+          <div class="draw-btn" title="Rectangle" onclick="setDraw(this)">▭</div>
+          <div class="draw-btn" title="Fib" onclick="setDraw(this)">ƒ</div>
+          <div class="draw-btn" title="Text" onclick="setDraw(this)">T</div>
+        </div>
+        <canvas id="mainCanvas"></canvas>
+        <!-- OHLCV -->
+        <div class="ohlcv-box">
+          <div class="ohlcv-sym" id="ohlcv-sym">NSE:NIFTY &nbsp;·&nbsp; Daily</div>
+          <div class="ohlcv-row">
+            <div class="ohlcv-item"><label>O</label><span id="oi-o" style="color:var(--text)">21,964</span></div>
+            <div class="ohlcv-item"><label>H</label><span id="oi-h" class="up">22,198</span></div>
+            <div class="ohlcv-item"><label>L</label><span id="oi-l" class="dn">21,920</span></div>
+            <div class="ohlcv-item"><label>C</label><span id="oi-c" style="color:#fff;font-weight:700">22,147</span></div>
+            <div class="ohlcv-item"><label>Vol</label><span id="oi-v" style="color:var(--accent)">18.4Cr</span></div>
+          </div>
+        </div>
+        <!-- LEGEND -->
+        <div class="legend-box" id="legendBox">
+          <div class="leg-item" id="leg-ema20"><div class="leg-color" style="background:#00bcd4"></div><span style="color:#00bcd4;font-size:10px;font-family:var(--font-mono)">EMA 20</span></div>
+          <div class="leg-item" id="leg-ema50"><div class="leg-color" style="background:#f0b429"></div><span style="color:#f0b429;font-size:10px;font-family:var(--font-mono)">EMA 50</span></div>
+        </div>
+      </div>
+
+      <!-- RIGHT RAIL -->
+      <div class="right-rail" id="rightRail">
+        <div class="rail-hdr"><span id="rail-sym-lbl">NIFTY 50</span><span style="cursor:pointer;color:var(--text2);font-size:18px;line-height:1;" onclick="toggleRail()">×</span></div>
+        <div class="rail-sec">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px;">
+            <div><div style="font-family:var(--font-mono);font-size:22px;font-weight:700;color:#fff" id="rail-price">₹22,147</div><div style="font-size:10px;color:var(--text2);margin-top:2px">NSE · Index</div></div>
+            <div style="text-align:right"><div class="up" style="font-family:var(--font-mono);font-size:13px;font-weight:700" id="rail-chg">▲ +0.83%</div><div style="font-size:9px;color:var(--text2);font-family:var(--font-mono)" id="rail-abs">+183.50</div></div>
+          </div>
+          <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;"><div style="height:100%;width:72%;background:linear-gradient(90deg,var(--red) 0%,var(--gold) 50%,var(--green) 100%);border-radius:2px;"></div></div>
+          <div style="display:flex;justify-content:space-between;margin-top:3px;font-size:9px;color:var(--text2);font-family:var(--font-mono)"><span>₹18,837</span><span>52W Range</span><span>₹22,794</span></div>
+        </div>
+        <div class="rail-sec">
+          <div class="rail-lbl">Analyst Ratings</div>
+          <div class="rating-row"><span class="rating-lbl" style="color:var(--green)">Buy</span><div class="rbar"><div class="rbar-fill" style="width:65%;background:var(--green)"></div></div><span class="rcount" style="color:var(--green)">18</span></div>
+          <div class="rating-row"><span class="rating-lbl" style="color:var(--gold)">Hold</span><div class="rbar"><div class="rbar-fill" style="width:25%;background:var(--gold)"></div></div><span class="rcount" style="color:var(--gold)">7</span></div>
+          <div class="rating-row"><span class="rating-lbl" style="color:var(--red)">Sell</span><div class="rbar"><div class="rbar-fill" style="width:10%;background:var(--red)"></div></div><span class="rcount" style="color:var(--red)">3</span></div>
+          <div style="font-size:10px;color:var(--text2);margin-top:4px">Consensus: <strong style="color:var(--green)">BUY</strong> · 28 analysts</div>
+        </div>
+        <div class="rail-sec">
+          <div class="rail-lbl">Support &amp; Resistance</div>
+          <div class="sr-row"><span style="color:var(--red)">R3</span><span class="dn">₹22,800</span></div>
+          <div class="sr-row"><span style="color:var(--red)">R2</span><span class="dn">₹22,600</span></div>
+          <div class="sr-row"><span style="color:var(--red)">R1</span><span class="dn">₹22,350</span></div>
+          <div class="sr-row" style="background:rgba(41,98,255,.08);padding:4px 4px;border-radius:4px;"><span style="color:var(--accent);font-weight:700">Pivot</span><span style="color:var(--accent);font-weight:700">₹22,147</span></div>
+          <div class="sr-row"><span style="color:var(--green)">S1</span><span class="up">₹21,900</span></div>
+          <div class="sr-row"><span style="color:var(--green)">S2</span><span class="up">₹21,650</span></div>
+          <div class="sr-row"><span style="color:var(--green)">S3</span><span class="up">₹21,400</span></div>
+        </div>
+        <div class="rail-sec">
+          <div class="rail-lbl">Key Stats</div>
+          <div class="kv"><span>P/E Ratio</span><span>22.4×</span></div>
+          <div class="kv"><span>Avg Volume</span><span>16.2Cr</span></div>
+          <div class="kv"><span>Beta</span><span>1.00</span></div>
+          <div class="kv"><span>52W High</span><span class="up">₹22,794</span></div>
+          <div class="kv"><span>52W Low</span><span class="dn">₹18,837</span></div>
+          <div class="kv"><span>Div Yield</span><span>1.23%</span></div>
+        </div>
+        <div class="rail-sec">
+          <div class="rail-lbl">Related Symbols</div>
+          <div id="relSymbols"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS BAR -->
+    <div class="stats-bar">
+      <div class="stat"><div class="stat-lbl">Symbol</div><div class="stat-val" id="s-sym" style="font-size:12px;color:var(--accent)">NSE:NIFTY</div></div>
+      <div class="stat"><div class="stat-lbl">LTP</div><div class="stat-val" id="s-ltp">22,147.90</div><div class="stat-sub up" id="s-abs">▲ +183.50</div></div>
+      <div class="stat"><div class="stat-lbl">Change%</div><div class="stat-val up" id="s-chg">+0.83%</div></div>
+      <div class="stat"><div class="stat-lbl">Volume</div><div class="stat-val">18.4Cr</div><div class="stat-sub" style="color:var(--accent)">↑ Above Avg</div></div>
+      <div class="stat"><div class="stat-lbl">Open</div><div class="stat-val">21,964.20</div></div>
+      <div class="stat"><div class="stat-lbl">High</div><div class="stat-val up">22,198.65</div></div>
+      <div class="stat"><div class="stat-lbl">Low</div><div class="stat-val dn">21,920.10</div></div>
+      <div class="stat"><div class="stat-lbl">52W High</div><div class="stat-val" style="color:var(--green)">22,794.70</div></div>
+      <div class="stat"><div class="stat-lbl">52W Low</div><div class="stat-val" style="color:var(--red)">18,837.85</div></div>
+      <div class="stat" style="margin-left:auto;border-right:none;"><div class="stat-lbl">Timeframe</div><div class="stat-val" id="s-tf" style="font-size:12px;color:var(--accent)">1D</div></div>
+    </div>
+  </main>
+</div>
+
+<script>
+// TICKER
+const tickers=[
+  {s:'NIFTY 50',p:'22,147',c:'+0.83%',u:1},{s:'SENSEX',p:'73,088',c:'+0.79%',u:1},
+  {s:'BANKNIFTY',p:'47,892',c:'+1.12%',u:1},{s:'RELIANCE',p:'2,941',c:'+1.45%',u:1},
+  {s:'TCS',p:'3,812',c:'-0.32%',u:0},{s:'INFY',p:'1,567',c:'+0.91%',u:1},
+  {s:'SBIN',p:'763',c:'+2.11%',u:1},{s:'TATAMOTORS',p:'962',c:'+4.31%',u:1},
+  {s:'WIPRO',p:'456',c:'-1.20%',u:0},{s:'BAJFINANCE',p:'6,841',c:'+0.55%',u:1},
+];
+const ti=document.getElementById('tickerInner');
+[...tickers,...tickers].forEach(d=>{
+  const el=document.createElement('div');el.className='t-item';
+  el.innerHTML=`<span style="color:#fff;font-weight:600">${d.s}</span><span style="color:var(--text3)">&nbsp;${d.p}</span><span class="${d.u?'up':'dn'}">&nbsp;${d.c}</span>`;
+  ti.appendChild(el);
+});
+
+// SYMBOLS DB
+const SYMBOLS=[
+  {sym:'NSE:NIFTY',name:'NIFTY 50',price:22147.90,chg:0.83,abs:183.50,sector:'Index'},
+  {sym:'NSE:BANKNIFTY',name:'Bank Nifty',price:47892.45,chg:1.12,abs:529.30,sector:'Index'},
+  {sym:'NSE:RELIANCE',name:'Reliance Industries',price:2941.00,chg:1.45,abs:42.10,sector:'Energy'},
+  {sym:'NSE:TCS',name:'Tata Consultancy',price:3812.50,chg:-0.32,abs:-12.25,sector:'IT'},
+  {sym:'NSE:SBIN',name:'State Bank of India',price:763.40,chg:2.11,abs:15.80,sector:'Banking'},
+  {sym:'NSE:INFY',name:'Infosys Ltd.',price:1567.25,chg:0.91,abs:14.10,sector:'IT'},
+  {sym:'NSE:HDFCBANK',name:'HDFC Bank Ltd.',price:1642.80,chg:-0.58,abs:-9.55,sector:'Banking'},
+  {sym:'NSE:TATAMOTORS',name:'Tata Motors Ltd.',price:962.50,chg:4.31,abs:39.80,sector:'Auto'},
+  {sym:'NSE:WIPRO',name:'Wipro Ltd.',price:456.30,chg:-1.20,abs:-5.55,sector:'IT'},
+  {sym:'NSE:BAJFINANCE',name:'Bajaj Finance',price:6841.00,chg:0.55,abs:37.40,sector:'Finance'},
+  {sym:'NSE:HCLTECH',name:'HCL Technologies',price:1423.60,chg:1.88,abs:26.30,sector:'IT'},
+  {sym:'NSE:MARUTI',name:'Maruti Suzuki',price:12340.00,chg:-0.44,abs:-54.60,sector:'Auto'},
+  {sym:'NSE:ICICIBANK',name:'ICICI Bank',price:1098.75,chg:0.67,abs:7.30,sector:'Banking'},
+  {sym:'NSE:ADANIENT',name:'Adani Enterprises',price:2450.30,chg:2.15,abs:51.60,sector:'Diversified'},
+  {sym:'NSE:ONGC',name:'ONGC Ltd.',price:267.80,chg:1.02,abs:2.70,sector:'Energy'},
+];
+
+let curSym=SYMBOLS[0], curTf='1D', chartType='candle';
+const activeInds=new Set(['EMA20','EMA50']);
+let candleData=[];
+
+// SYMBOL SEARCH
+const symInput=document.getElementById('symInput');
+const symDD=document.getElementById('symDropdown');
+symInput.addEventListener('input',()=>{
+  const q=symInput.value.toLowerCase();
+  const matches=SYMBOLS.filter(s=>s.sym.toLowerCase().includes(q)||s.name.toLowerCase().includes(q));
+  symDD.innerHTML='';
+  if(q&&matches.length){
+    matches.slice(0,7).forEach(s=>{
+      const d=document.createElement('div');d.className='sym-dd-item';
+      const u=s.chg>=0;
+      d.innerHTML=`<div><div class="sym-dd-name">${s.sym.replace('NSE:','')}</div><div class="sym-dd-full">${s.name}</div></div><span class="${u?'up':'dn'}" style="font-family:var(--font-mono);font-size:11px;">₹${s.price.toLocaleString('en-IN')} &nbsp;${u?'+':''}${s.chg}%</span>`;
+      d.onclick=()=>{selectSym(s);symDD.classList.remove('show');};
+      symDD.appendChild(d);
+    });
+    symDD.classList.add('show');
+  } else symDD.classList.remove('show');
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.sym-search'))symDD.classList.remove('show');});
+symInput.addEventListener('keydown',e=>{if(e.key==='Enter'){const q=symInput.value.toUpperCase();const s=SYMBOLS.find(x=>x.sym.includes(q));if(s)selectSym(s);}});
+
+function selectSym(s){
+  curSym=s;
+  symInput.value=s.sym;
+  document.getElementById('s-sym').textContent=s.sym;
+  document.getElementById('rail-sym-lbl').textContent=s.name;
+  document.getElementById('rail-price').textContent='₹'+s.price.toLocaleString('en-IN');
+  const u=s.chg>=0;
+  document.getElementById('rail-chg').textContent=(u?'▲ +':'▼ ')+s.chg+'%';
+  document.getElementById('rail-chg').className=u?'up':'dn';
+  document.getElementById('rail-abs').textContent=(u?'+':'')+s.abs;
+  document.getElementById('s-ltp').textContent=s.price.toLocaleString('en-IN');
+  document.getElementById('s-chg').textContent=(u?'+':'')+s.chg+'%';
+  document.getElementById('s-chg').className='stat-val '+(u?'up':'dn');
+  document.getElementById('s-abs').textContent=(u?'▲ +':'▼ ')+s.abs;
+  document.getElementById('ohlcv-sym').textContent=s.sym+' · '+curTf;
+  genCandleData();drawChart();
+}
+
+// GENERATE CANDLE DATA
+function genCandleData(){
+  candleData=[];
+  let price=curSym.price*0.90;
+  for(let i=0;i<100;i++){
+    const vol=i===99?curSym.price:1;
+    const drift=(Math.random()-0.44)*price*0.016;
+    const o=price,c=price+drift;
+    const h=Math.max(o,c)+(Math.random()*price*0.007);
+    const l=Math.min(o,c)-(Math.random()*price*0.007);
+    const v=Math.floor(Math.random()*60000000+3000000);
+    candleData.push({o,h,l,c,v});
+    price=c;
+  }
+  // Force last close near current price
+  candleData[candleData.length-1].c=curSym.price;
+  updateOHLCV(candleData[candleData.length-1]);
+}
+
+function updateOHLCV(c){
+  document.getElementById('oi-o').textContent=c.o.toFixed(2);
+  document.getElementById('oi-h').textContent=c.h.toFixed(2);
+  document.getElementById('oi-l').textContent=c.l.toFixed(2);
+  document.getElementById('oi-c').textContent=c.c.toFixed(2);
+  document.getElementById('oi-v').textContent=(c.v/10000000).toFixed(2)+'Cr';
+}
+
+// CANVAS
+const canvas=document.getElementById('mainCanvas');
+const ctx=canvas.getContext('2d');
+
+function resize(){
+  const wrap=document.getElementById('chartWrap');
+  canvas.width=wrap.clientWidth;canvas.height=wrap.clientHeight;
+  drawChart();
+}
+
+function drawChart(){
+  if(!candleData.length)return;
+  const W=canvas.width,H=canvas.height;
+  const PAD={t:44,b:76,l:8,r:68};
+  const chartW=W-PAD.l-PAD.r,chartH=H-PAD.t-PAD.b;
+
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0d1117';ctx.fillRect(0,0,W,H);
+
+  const vis=candleData.slice(-65);
+  const prices=vis.flatMap(c=>[c.h,c.l]);
+  const mn=Math.min(...prices)*0.9995,mx=Math.max(...prices)*1.0005;
+  const pr=mx-mn;
+  const toY=p=>PAD.t+chartH*(1-(p-mn)/pr);
+  const cw=Math.max(3,(chartW/vis.length)*0.72);
+  const toX=i=>PAD.l+(i+0.5)*(chartW/vis.length);
+
+  // Horizontal grid
+  for(let i=0;i<=7;i++){
+    const y=PAD.t+(chartH/7)*i;
+    ctx.strokeStyle='rgba(42,53,80,.5)';ctx.lineWidth=.5;
+    ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(W-PAD.r,y);ctx.stroke();
+    const val=(mx-pr*(i/7));
+    ctx.fillStyle='#787b86';ctx.font='10px JetBrains Mono';ctx.textAlign='left';
+    ctx.fillText(val.toFixed(0),W-PAD.r+4,y+4);
+  }
+  // Vertical grid
+  for(let i=0;i<vis.length;i+=10){
+    const x=toX(i);
+    ctx.strokeStyle='rgba(42,53,80,.4)';ctx.lineWidth=.5;
+    ctx.beginPath();ctx.moveTo(x,PAD.t);ctx.lineTo(x,H-PAD.b);ctx.stroke();
+  }
+
+  // EMAs
+  if(activeInds.has('EMA20')) drawEMA(vis,20,toX,toY,'#00bcd4',1.5);
+  if(activeInds.has('EMA50')) drawEMA(vis,50,toX,toY,'#f0b429',1.5);
+  if(activeInds.has('VWAP')) drawEMA(vis,14,toX,toY,'#ab47bc',1.5);
+  if(activeInds.has('BB')) drawBB(vis,toX,toY);
+
+  // Chart
+  if(chartType==='candle'){
+    vis.forEach((c,i)=>{
+      const x=toX(i),up=c.c>=c.o,col=up?'#26a69a':'#ef5350';
+      ctx.strokeStyle=col;ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(x,toY(c.h));ctx.lineTo(x,toY(c.l));ctx.stroke();
+      const bt=toY(Math.max(c.o,c.c)),bh=Math.max(1,Math.abs(toY(c.o)-toY(c.c)));
+      ctx.fillStyle=up?'#26a69a':'#ef5350';ctx.fillRect(x-cw/2,bt,cw,bh);
+    });
+  } else if(chartType==='line'){
+    ctx.beginPath();ctx.strokeStyle='#2962FF';ctx.lineWidth=2;
+    vis.forEach((c,i)=>i===0?ctx.moveTo(toX(i),toY(c.c)):ctx.lineTo(toX(i),toY(c.c)));
+    ctx.stroke();
+  } else if(chartType==='area'){
+    const gr=ctx.createLinearGradient(0,PAD.t,0,H-PAD.b);
+    gr.addColorStop(0,'rgba(41,98,255,.3)');gr.addColorStop(1,'rgba(41,98,255,0)');
+    ctx.beginPath();ctx.moveTo(toX(0),toY(vis[0].c));
+    vis.forEach((c,i)=>ctx.lineTo(toX(i),toY(c.c)));
+    ctx.lineTo(toX(vis.length-1),H-PAD.b);ctx.lineTo(PAD.l,H-PAD.b);ctx.closePath();
+    ctx.fillStyle=gr;ctx.fill();
+    ctx.beginPath();ctx.strokeStyle='#2962FF';ctx.lineWidth=2;
+    vis.forEach((c,i)=>i===0?ctx.moveTo(toX(i),toY(c.c)):ctx.lineTo(toX(i),toY(c.c)));
+    ctx.stroke();
+  } else {
+    vis.forEach((c,i)=>{
+      const x=toX(i),up=c.c>=c.o,col=up?'#26a69a':'#ef5350';
+      ctx.strokeStyle=col;ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(x,toY(c.h));ctx.lineTo(x,toY(c.l));ctx.stroke();
+      ctx.beginPath();ctx.moveTo(x-4,toY(c.o));ctx.lineTo(x,toY(c.o));ctx.stroke();
+      ctx.beginPath();ctx.moveTo(x,toY(c.c));ctx.lineTo(x+4,toY(c.c));ctx.stroke();
+    });
+  }
+
+  // Current price line
+  const lc=vis[vis.length-1].c,ly=toY(lc);
+  ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(41,98,255,.5)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(PAD.l,ly);ctx.lineTo(W-PAD.r,ly);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#2962FF';ctx.fillRect(W-PAD.r,ly-9,PAD.r-2,18);
+  ctx.fillStyle='#fff';ctx.font='bold 10px JetBrains Mono';ctx.textAlign='left';
+  ctx.fillText(lc.toFixed(0),W-PAD.r+4,ly+4);
+
+  // Volume bars (bottom strip)
+  const vH=50,vY=H-PAD.b+4;
+  const maxV=Math.max(...vis.map(c=>c.v));
+  vis.forEach((c,i)=>{
+    const x=toX(i),up=c.c>=c.o,bh=(c.v/maxV)*vH;
+    ctx.fillStyle=up?'rgba(38,166,154,.35)':'rgba(239,83,80,.3)';
+    ctx.fillRect(x-cw/2,vY+(vH-bh),cw,bh);
+  });
+
+  // Time labels
+  const now=new Date(),mon=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let d=new Date(now);d.setDate(d.getDate()-vis.length);
+  ctx.fillStyle='#787b86';ctx.font='9px JetBrains Mono';ctx.textAlign='center';
+  for(let i=0;i<vis.length;i+=10){
+    d.setDate(d.getDate()+10);
+    ctx.fillText(`${d.getDate()} ${mon[d.getMonth()]}`,toX(i),H-PAD.b+68);
+  }
+}
+
+function drawEMA(data,period,toX,toY,col,lw){
+  const k=2/(period+1);let ema=data[0].c;
+  const vals=[ema];
+  for(let i=1;i<data.length;i++){ema=data[i].c*k+ema*(1-k);vals.push(ema);}
+  ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=lw;
+  vals.forEach((v,i)=>i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)));
+  ctx.stroke();
+}
+
+function drawBB(data,toX,toY){
+  const p=20;
+  const upPts=[],dnPts=[];
+  for(let i=p;i<data.length;i++){
+    const sl=data.slice(i-p,i).map(c=>c.c);
+    const avg=sl.reduce((a,b)=>a+b)/p;
+    const std=Math.sqrt(sl.reduce((s,v)=>s+(v-avg)**2,0)/p);
+    upPts.push({x:toX(i),y:toY(avg+2*std)});
+    dnPts.push({x:toX(i),y:toY(avg-2*std)});
+  }
+  ctx.strokeStyle='rgba(171,71,188,.5)';ctx.lineWidth=1;
+  [upPts,dnPts].forEach(pts=>{
+    ctx.beginPath();pts.forEach((pt,i)=>i===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y));ctx.stroke();
+  });
+}
+
+// CONTROLS
+function setChartType(el,t){document.querySelectorAll('.ct-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');chartType=t;drawChart();}
+function setTf(el,tf){document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');curTf=tf;document.getElementById('s-tf').textContent=tf;document.getElementById('ohlcv-sym').textContent=curSym.sym+' · '+tf;genCandleData();drawChart();}
+function toggleInd(el,ind){el.classList.toggle('on');if(activeInds.has(ind))activeInds.delete(ind);else activeInds.add(ind);updateLegend();drawChart();}
+function updateLegend(){
+  ['ema20','ema50'].forEach(id=>{
+    const el=document.getElementById('leg-'+id);
+    if(el) el.style.display=activeInds.has(id.replace('leg-','').toUpperCase().replace('EMA','EMA'))?'flex':'none';
+  });
+  document.getElementById('leg-ema20').style.display=activeInds.has('EMA20')?'flex':'none';
+  document.getElementById('leg-ema50').style.display=activeInds.has('EMA50')?'flex':'none';
+}
+function setDraw(el){document.querySelectorAll('.draw-btn').forEach(b=>b.classList.remove('on'));el.classList.add('on');}
+function toggleRail(){document.getElementById('rightRail').classList.toggle('closed');setTimeout(resize,280);}
+
+// CROSSHAIR
+canvas.addEventListener('mousemove',e=>{
+  const rect=canvas.getBoundingClientRect();
+  const x=e.clientX-rect.left;
+  const PAD={t:44,b:76,l:8,r:68};
+  const chartW=canvas.width-PAD.l-PAD.r;
+  const vis=candleData.slice(-65);
+  const idx=Math.max(0,Math.min(vis.length-1,Math.floor((x-PAD.l)/(chartW/vis.length))));
+  if(idx>=0&&idx<vis.length) updateOHLCV(vis[idx]);
+});
+
+// RELATED SYMBOLS
+const rel=document.getElementById('relSymbols');
+SYMBOLS.slice(0,6).forEach(s=>{
+  const u=s.chg>=0;
+  const d=document.createElement('div');
+  d.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(42,53,80,.35);cursor:pointer;';
+  d.innerHTML=`<div><div style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--text)">${s.sym.replace('NSE:','')}</div><div style="font-size:10px;color:var(--text2)">${s.name}</div></div><div class="${u?'up':'dn'}" style="font-family:var(--font-mono);font-size:11px;text-align:right">₹${s.price.toLocaleString('en-IN')}<br>${u?'+':''}${s.chg}%</div>`;
+  d.onclick=()=>selectSym(s);
+  rel.appendChild(d);
+});
+
+// INIT
+genCandleData();
+window.addEventListener('resize',resize);
+setTimeout(resize,50);
+</script>
+</body>
+</html>

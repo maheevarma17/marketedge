@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MarketEdge — Portfolio & P&L Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #131722;
+  --bg2: #1a1f2e;
+  --bg3: #1e2438;
+  --bg4: #222840;
+  --accent: #2962FF;
+  --accent2: #1a4fd6;
+  --text: #D1D4DC;
+  --text2: #8892a4;
+  --text3: #4a5568;
+  --border: #252d3d;
+  --border2: #2e3650;
+  --green: #26a69a;
+  --green2: #1d8078;
+  --red: #ef5350;
+  --yellow: #f59e0b;
+  --sidebar-w: 220px;
+  --nav-h: 56px;
+  --r: 10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes countUp{from{opacity:0}to{opacity:1}}
+
+/* ══ NAVBAR ══ */
+.navbar{position:fixed;top:0;left:0;right:0;height:var(--nav-h);background:rgba(26,31,46,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;z-index:200;gap:16px}
+.nav-logo{font-size:20px;font-weight:800;color:#fff;letter-spacing:-.5px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.nav-logo em{color:var(--accent);font-style:normal}
+.nav-logo::before{content:'▲';color:var(--accent);font-size:13px}
+.nav-links{display:flex;gap:2px;margin-left:16px}
+.nav-link{padding:6px 13px;border-radius:6px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;transition:.2s;text-decoration:none;white-space:nowrap}
+.nav-link:hover{color:var(--text);background:var(--bg3)}
+.nav-link.active{color:#fff;background:var(--accent)}
+.nav-spacer{flex:1}
+.nav-right{display:flex;align-items:center;gap:10px}
+.nav-chip{background:rgba(38,166,154,.12);color:var(--green);border:1px solid rgba(38,166,154,.3);border-radius:5px;padding:3px 8px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:600;display:flex;align-items:center;gap:5px}
+.nav-chip::before{content:'';width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
+.nav-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#6c63ff);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;cursor:pointer;border:2px solid transparent;transition:.2s}
+.nav-avatar:hover{border-color:var(--accent)}
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px}
+.hamburger span{width:20px;height:1.5px;background:var(--text2);border-radius:2px;transition:.3s}
+
+/* ══ SIDEBAR ══ */
+.sidebar{position:fixed;top:var(--nav-h);left:0;width:var(--sidebar-w);height:calc(100vh - var(--nav-h));background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:transform .3s ease;z-index:150;overflow-y:auto}
+.sidebar.collapsed{transform:translateX(-100%)}
+.sidebar-section{padding:18px 14px 6px;font-size:9.5px;font-weight:700;letter-spacing:1.8px;color:var(--text3);text-transform:uppercase}
+.sidebar-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);transition:.18s;text-decoration:none;position:relative}
+.sidebar-item:hover{color:var(--text);background:var(--bg3)}
+.sidebar-item.active{color:#fff;background:rgba(41,98,255,.15)}
+.sidebar-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:20px;background:var(--accent);border-radius:0 3px 3px 0}
+.sidebar-item .icon{font-size:14px;width:18px;text-align:center}
+.sidebar-footer{margin-top:auto;padding:12px;border-top:1px solid var(--border)}
+.collapse-btn{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;cursor:pointer;color:var(--text2);font-size:12px;transition:.2s}
+.collapse-btn:hover{background:var(--bg3);color:var(--text)}
+
+/* ══ LAYOUT ══ */
+.layout{margin-top:var(--nav-h);margin-left:var(--sidebar-w);transition:margin-left .3s ease;min-height:calc(100vh - var(--nav-h));display:flex;flex-direction:column}
+.layout.sidebar-collapsed{margin-left:0}
+.content{padding:24px;flex:1}
+
+/* ══ PAGE HEADER ══ */
+.page-header{margin-bottom:22px;animation:fadeUp .4s ease}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);margin-bottom:8px}
+.breadcrumb a{color:var(--accent);text-decoration:none}
+.breadcrumb span{color:var(--text3)}
+.page-title{font-size:22px;font-weight:800;color:#fff;letter-spacing:-.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.page-badge{font-size:11px;font-weight:600;background:rgba(41,98,255,.18);color:var(--accent);border:1px solid rgba(41,98,255,.3);border-radius:5px;padding:3px 8px;letter-spacing:.5px}
+.page-sub{font-size:12px;color:var(--text2);margin-top:5px;font-family:'JetBrains Mono',monospace}
+
+/* ══ SUMMARY CARDS ══ */
+.summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px;animation:fadeUp .4s ease .05s both}
+.sum-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:18px 18px 16px;position:relative;overflow:hidden;transition:.2s;cursor:default}
+.sum-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:var(--r) var(--r) 0 0}
+.sum-card.green-card::after{background:linear-gradient(90deg,var(--green),transparent)}
+.sum-card.red-card::after{background:linear-gradient(90deg,var(--red),transparent)}
+.sum-card.accent-card::after{background:linear-gradient(90deg,var(--accent),transparent)}
+.sum-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.sum-label{font-size:10px;font-weight:600;letter-spacing:1.2px;color:var(--text2);text-transform:uppercase;margin-bottom:10px}
+.sum-value{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#fff;line-height:1;margin-bottom:6px}
+.sum-value.green{color:var(--green)}
+.sum-value.red{color:var(--red)}
+.sum-sub{font-size:11px;color:var(--text2);display:flex;align-items:center;gap:4px;font-family:'JetBrains Mono',monospace}
+.sum-sub .arrow{font-size:12px;font-weight:700}
+.sum-sub .green-t{color:var(--green)}
+.sum-sub .red-t{color:var(--red)}
+.sum-icon{position:absolute;top:14px;right:14px;font-size:20px;opacity:.15}
+
+/* ══ CHARTS ROW ══ */
+.charts-row{display:grid;grid-template-columns:1fr 320px;gap:16px;margin-bottom:22px;animation:fadeUp .4s ease .1s both}
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card-title{font-size:14px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
+.card-title::before{content:'';width:3px;height:15px;background:var(--accent);border-radius:2px}
+
+/* Timeframe tabs */
+.tf-tabs{display:flex;gap:2px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px;margin-left:auto}
+.tf-tab{padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;color:var(--text2);cursor:pointer;transition:.15s;font-family:'JetBrains Mono',monospace}
+.tf-tab:hover{color:var(--text)}
+.tf-tab.active{background:var(--accent);color:#fff}
+
+/* Portfolio chart */
+.portfolio-chart-wrap{position:relative;padding:12px 16px 8px}
+.chart-tooltip{position:absolute;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;pointer-events:none;display:none;z-index:10;min-width:130px;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.chart-tooltip .tt-date{font-size:10px;color:var(--text2);margin-bottom:3px;font-family:'JetBrains Mono',monospace}
+.chart-tooltip .tt-val{font-size:14px;font-weight:700;color:#fff;font-family:'JetBrains Mono',monospace}
+.chart-tooltip .tt-chg{font-size:11px;font-family:'JetBrains Mono',monospace}
+
+/* Donut chart */
+.donut-wrap{padding:16px;display:flex;flex-direction:column;gap:16px;align-items:center}
+.donut-legend{width:100%;display:flex;flex-direction:column;gap:7px}
+.legend-item{display:flex;align-items:center;justify-content:space-between;font-size:12px}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-right:8px}
+.legend-left{display:flex;align-items:center}
+.legend-name{color:var(--text);font-weight:500}
+.legend-pct{font-family:'JetBrains Mono',monospace;color:var(--text2);font-size:11px}
+
+/* ══ HOLDINGS TABLE ══ */
+.holdings-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;animation:fadeUp .4s ease .15s both}
+.holdings-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tab-strip{display:flex;gap:0}
+.htab{padding:10px 18px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.2s;white-space:nowrap}
+.htab:hover{color:var(--text)}
+.htab.active{color:#fff;border-bottom-color:var(--accent)}
+.tbl-controls{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.search-box{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 12px;display:flex;align-items:center;gap:8px;flex:1;max-width:260px}
+.search-box input{background:none;border:none;outline:none;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;width:100%}
+.search-box input::placeholder{color:var(--text3)}
+.sort-note{font-size:11px;color:var(--text3);margin-left:auto}
+
+.tbl-wrap{overflow-x:auto}
+table.htbl{width:100%;border-collapse:collapse;min-width:860px}
+table.htbl thead th{background:var(--bg3);padding:9px 12px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.9px;color:var(--text2);text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;transition:.15s;position:sticky;top:0;z-index:2}
+table.htbl thead th:hover{color:var(--text)}
+table.htbl thead th.sorted{color:var(--accent)}
+table.htbl thead th .sort-icon{margin-left:4px;font-size:9px;opacity:.5}
+table.htbl thead th.sorted .sort-icon{opacity:1;color:var(--accent)}
+table.htbl tbody tr{border-bottom:1px solid rgba(37,45,61,.6);transition:.15s;animation:fadeUp .3s ease both}
+table.htbl tbody tr:hover{background:rgba(41,98,255,.04)}
+table.htbl td{padding:11px 12px;font-size:13px;white-space:nowrap;vertical-align:middle}
+
+.sym-cell .sym{font-weight:700;color:#fff;font-size:13.5px}
+.sym-cell .co{font-size:10px;color:var(--text2);margin-top:2px}
+.val-cell{font-family:'JetBrains Mono',monospace;font-size:13px}
+.pnl-cell{font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:600}
+.pnl-cell.pos{color:var(--green)}
+.pnl-cell.neg{color:var(--red)}
+.day-cell{font-family:'JetBrains Mono',monospace;font-size:12px}
+.day-cell.pos{color:var(--green)}
+.day-cell.neg{color:var(--red)}
+.wl-btn{background:none;border:1px solid var(--border);color:var(--text2);width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px;transition:.2s;display:flex;align-items:center;justify-content:center}
+.wl-btn:hover{border-color:var(--yellow);color:var(--yellow)}
+.wl-btn.added{border-color:var(--yellow);color:var(--yellow);background:rgba(245,158,11,.1)}
+
+/* Sparkline canvas */
+.sparkline{display:block}
+
+/* Holdings summary bar */
+.holdings-summary{padding:12px 18px;background:var(--bg3);border-top:1px solid var(--border);display:flex;gap:24px;flex-wrap:wrap}
+.hs-item{display:flex;flex-direction:column;gap:2px}
+.hs-label{font-size:10px;color:var(--text2);font-weight:500;letter-spacing:.5px;text-transform:uppercase}
+.hs-val{font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.hs-val.green{color:var(--green)}
+.hs-val.red{color:var(--red)}
+
+/* Positions table specific */
+.pos-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.pos-long{background:rgba(38,166,154,.15);color:var(--green);border:1px solid rgba(38,166,154,.25)}
+.pos-short{background:rgba(239,83,80,.15);color:var(--red);border:1px solid rgba(239,83,80,.25)}
+
+/* FOOTER */
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.footer-left{font-size:12px;color:var(--text2)}
+.footer-left strong{color:var(--text)}
+.footer-links{display:flex;gap:16px}
+.footer-links a{font-size:12px;color:var(--text2);text-decoration:none;transition:.2s}
+.footer-links a:hover{color:var(--accent)}
+.footer-right{font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace}
+.footer-disc{font-size:10px;color:var(--text3);padding:8px 24px 10px;border-top:1px solid var(--border);background:var(--bg2)}
+
+/* RESPONSIVE */
+@media(max-width:1200px){
+  .summary-grid{grid-template-columns:repeat(3,1fr)}
+  .charts-row{grid-template-columns:1fr}
+}
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .layout{margin-left:0!important}
+  .hamburger{display:flex}
+  .nav-links{display:none}
+  .summary-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:600px){
+  .content{padding:12px}
+  .summary-grid{grid-template-columns:1fr 1fr}
+  .sum-value{font-size:18px}
+}
+aside a {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></div>
+  <div class="nav-logo">Market<em>Edge</em></div>
+ <div class="nav-links">
+  <a href="page1-dashboard.html">Dashboard</a>
+  <a href="page2-charts.html">Charts</a>
+  <a href="page3-screener.html">Screener</a>
+  <a href="page4-options.html">Options</a>
+  <a href="page5-orders.html">Orders</a>
+  <a href="page6-portfolio.html">Portfolio</a>
+  <a href="page7-watchlist.html">Watchlist</a>
+  <a href="page8-paper-trading.html">Paper Trade</a>
+  <a href="page9-ai-assistant.html">AI Assistant</a>
+</div>
+  <div class="nav-spacer"></div>
+  <div class="nav-right">
+    <div class="nav-chip">MARKET OPEN</div>
+    <div class="nav-avatar">AK</div>
+  </div>
+</nav>
+
+<!-- SIDEBAR -->
+<aside>
+  <a href="page1-dashboard.html"><div class="side-btn" title="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div></a>
+
+  <a href="page2-charts.html"><div class="side-btn" title="Charts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></a>
+
+  <a href="page3-screener.html"><div class="side-btn" title="Screener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div></a>
+
+  <div class="side-div"></div>
+
+  <a href="page6-portfolio.html"><div class="side-btn active" title="Portfolio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div></a>
+
+  <a href="page9-ai-assistant.html"><div class="side-btn" title="AI Bot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M12 12v2"/><rect x="8" y="14" width="8" height="6" rx="2"/><line x1="9" y1="17" x2="9" y2="17"/><line x1="15" y1="17" x2="15" y2="17"/></svg></div></a>
+
+  <div class="side-div"></div>
+
+  <a href="#"><div class="side-btn" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div></a>
+</aside>
+
+<!-- MAIN LAYOUT -->
+<div class="layout" id="layout">
+<div class="content">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="breadcrumb"><a href="#">Home</a><span>›</span><span>Portfolio & P&L Tracker</span></div>
+    <div class="page-title">My Portfolio <span class="page-badge">LIVE</span></div>
+    <div class="page-sub">Arjun Kapoor · Client ID: AK8821 · As of <span id="liveTime"></span></div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="summary-grid" id="summaryGrid"></div>
+
+  <!-- Charts Row -->
+  <div class="charts-row">
+    <!-- Portfolio Chart -->
+    <div class="chart-card">
+      <div class="card-header">
+        <div class="card-title">Portfolio Value</div>
+        <div class="tf-tabs">
+          <div class="tf-tab active" onclick="setTF(this,'1W')">1W</div>
+          <div class="tf-tab" onclick="setTF(this,'1M')">1M</div>
+          <div class="tf-tab" onclick="setTF(this,'3M')">3M</div>
+          <div class="tf-tab" onclick="setTF(this,'6M')">6M</div>
+          <div class="tf-tab" onclick="setTF(this,'1Y')">1Y</div>
+        </div>
+      </div>
+      <div class="portfolio-chart-wrap" id="pfChartWrap">
+        <canvas id="pfChart"></canvas>
+        <div class="chart-tooltip" id="chartTooltip">
+          <div class="tt-date" id="ttDate"></div>
+          <div class="tt-val" id="ttVal"></div>
+          <div class="tt-chg" id="ttChg"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sector Donut -->
+    <div class="chart-card">
+      <div class="card-header">
+        <div class="card-title">Sector Allocation</div>
+      </div>
+      <div class="donut-wrap">
+        <canvas id="donutChart" width="180" height="180"></canvas>
+        <div class="donut-legend" id="donutLegend"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Holdings / Positions -->
+  <div class="holdings-card">
+    <div class="holdings-header" style="border-bottom:none;padding-bottom:0">
+      <div class="tab-strip">
+        <div class="htab active" onclick="switchHTab(this,'holdings')">Holdings <span style="font-size:10px;opacity:.6">(10)</span></div>
+        <div class="htab" onclick="switchHTab(this,'positions')">Positions <span style="font-size:10px;opacity:.6">(5)</span></div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border)">
+      <div class="tbl-controls">
+        <div class="search-box">
+          <span style="color:var(--text3);font-size:14px">⌕</span>
+          <input type="text" placeholder="Search symbol or company..." oninput="filterHoldings(this.value)" id="holdingSearch">
+        </div>
+        <div class="sort-note" id="sortNote">Click column headers to sort</div>
+      </div>
+
+      <!-- Holdings Table -->
+      <div id="holdingsView">
+        <div class="tbl-wrap">
+          <table class="htbl" id="holdingsTbl">
+            <thead>
+              <tr>
+                <th onclick="sortBy('sym')">Symbol <span class="sort-icon">⇅</span></th>
+                <th onclick="sortBy('qty')">Qty <span class="sort-icon">⇅</span></th>
+                <th onclick="sortBy('avg')">Avg Price <span class="sort-icon">⇅</span></th>
+                <th onclick="sortBy('ltp')">LTP <span class="sort-icon">⇅</span></th>
+                <th onclick="sortBy('curVal')">Curr. Value <span class="sort-icon">⇅</span></th>
+                <th onclick="sortBy('pnl')">P&L (₹) <span class="sort-icon">⇅</span></th>
+                <th onclick="sortBy('pnlPct')">P&L (%) <span class="sort-icon">⇅</span></th>
+                <th onclick="sortBy('dayChg')">Day Chg <span class="sort-icon">⇅</span></th>
+                <th>Sparkline</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="holdingsTbody"></tbody>
+          </table>
+        </div>
+        <div class="holdings-summary" id="holdingsSummary"></div>
+      </div>
+
+      <!-- Positions Table -->
+      <div id="positionsView" style="display:none">
+        <div class="tbl-wrap">
+          <table class="htbl">
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Qty</th>
+                <th>Buy Avg</th>
+                <th>LTP</th>
+                <th>Unrealised P&L</th>
+                <th>Realised P&L</th>
+                <th>Product</th>
+              </tr>
+            </thead>
+            <tbody id="posTbody"></tbody>
+          </table>
+        </div>
+        <div class="holdings-summary" id="posSummary"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<footer>
+  <div class="footer-left"><strong>MarketEdge</strong> © 2025 — All Rights Reserved</div>
+  <div class="footer-links">
+    <a href="#">Terms</a><a href="#">Privacy</a><a href="#">Disclaimer</a><a href="#">Support</a>
+  </div>
+  <div class="footer-right">v6.0.0 · NSE · BSE</div>
+</footer>
+<div class="footer-disc">⚠ Investments in securities market are subject to market risks. Returns shown are indicative and based on current market prices. Past performance is not indicative of future results.</div>
+</div><!-- /layout -->
+
+<script>
+// ════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════
+const HOLDINGS = [
+  {sym:'RELIANCE', co:'Reliance Industries Ltd', sector:'Energy',        qty:50,  avg:2620.00, ltp:2941.50, spark:[2680,2710,2695,2880,2941], dayChgPct:+1.23},
+  {sym:'TCS',      co:'Tata Consultancy Services', sector:'IT',          qty:20,  avg:3920.00, ltp:3780.25, spark:[3850,3820,3790,3770,3780], dayChgPct:-0.45},
+  {sym:'INFY',     co:'Infosys Ltd',               sector:'IT',          qty:100, avg:1540.00, ltp:1680.10, spark:[1610,1635,1650,1665,1680], dayChgPct:+0.87},
+  {sym:'HDFCBANK', co:'HDFC Bank Ltd',             sector:'Banking',     qty:30,  avg:1720.00, ltp:1624.35, spark:[1680,1660,1645,1635,1624], dayChgPct:-1.12},
+  {sym:'ICICIBANK',co:'ICICI Bank Ltd',            sector:'Banking',     qty:75,  avg:980.00,  ltp:1102.80, spark:[1060,1072,1085,1095,1103], dayChgPct:+2.05},
+  {sym:'TATAMOTORS',co:'Tata Motors Ltd',          sector:'Auto',        qty:120, avg:780.00,  ltp:924.75,  spark:[850,870,895,912,925], dayChgPct:+3.21},
+  {sym:'SUNPHARMA',co:'Sun Pharmaceutical Ind',   sector:'Pharma',      qty:40,  avg:1480.00, ltp:1658.90, spark:[1580,1600,1625,1642,1659], dayChgPct:+2.14},
+  {sym:'ITC',      co:'ITC Ltd',                  sector:'FMCG',        qty:300, avg:395.00,  ltp:472.15,  spark:[460,464,468,470,472], dayChgPct:-0.21},
+  {sym:'AXISBANK', co:'Axis Bank Ltd',            sector:'Banking',     qty:60,  avg:1150.00, ltp:1076.40, spark:[1100,1090,1085,1080,1076], dayChgPct:+1.08},
+  {sym:'MARUTI',   co:'Maruti Suzuki India Ltd',  sector:'Auto',        qty:10,  avg:10800.00,ltp:12478.25,spark:[11800,12000,12200,12350,12478],dayChgPct:+0.91},
+];
+
+const POSITIONS = [
+  {sym:'NIFTY25FEB',  qty:75,   buyAvg:22050.00, ltp:22147.90, unrealised:+7342.50, realised:+3200.00, product:'MIS'},
+  {sym:'SBIN',        qty:200,  buyAvg:790.00,   ltp:782.90,   unrealised:-1420.00, realised:0,        product:'MIS'},
+  {sym:'BHARTIARTL',  qty:100,  buyAvg:1472.00,  ltp:1485.60,  unrealised:+1360.00, realised:+820.00,  product:'MIS'},
+  {sym:'WIPRO',       qty:-150, buyAvg:562.00,   ltp:556.40,   unrealised:+840.00,  realised:0,        product:'MIS'},
+  {sym:'HCLTECH',     qty:50,   buyAvg:1520.00,  ltp:1542.35,  unrealised:+1117.50, realised:-450.00,  product:'NRML'},
+];
+
+const SECTORS = [
+  {name:'IT',      pct:28.4, color:'#2962FF'},
+  {name:'Banking', pct:24.1, color:'#26a69a'},
+  {name:'Energy',  pct:18.6, color:'#f59e0b'},
+  {name:'Auto',    pct:14.8, color:'#ab47bc'},
+  {name:'Pharma',  pct:8.5,  color:'#ef5350'},
+  {name:'FMCG',    pct:5.6,  color:'#29b6f6'},
+];
+
+// computed holding fields
+HOLDINGS.forEach(h=>{
+  h.curVal = h.ltp * h.qty;
+  h.invVal = h.avg * h.qty;
+  h.pnl    = h.curVal - h.invVal;
+  h.pnlPct = ((h.ltp - h.avg) / h.avg * 100);
+  h.dayChg = h.ltp * h.dayChgPct / 100;
+});
+
+const totalInv   = HOLDINGS.reduce((a,h)=>a+h.invVal,0);
+const totalCur   = HOLDINGS.reduce((a,h)=>a+h.curVal,0);
+const totalPnL   = totalCur - totalInv;
+const totalPnLPct= totalPnL/totalInv*100;
+const dayPnL     = HOLDINGS.reduce((a,h)=>a+h.dayChg*h.qty,0);
+const XIRR       = 18.42;
+
+// ════════════════════════════════════════════
+// LIVE TIME
+// ════════════════════════════════════════════
+function updateTime(){
+  const now=new Date();
+  document.getElementById('liveTime').textContent=now.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(updateTime,1000); updateTime();
+
+// ════════════════════════════════════════════
+// SUMMARY CARDS
+// ════════════════════════════════════════════
+function fmtINR(n,dec=0){return '₹'+Math.abs(n).toLocaleString('en-IN',{minimumFractionDigits:dec,maximumFractionDigits:dec})}
+function fmtPct(n){return (n>=0?'+':'')+n.toFixed(2)+'%'}
+function fmtSigned(n){return (n>=0?'+':'-')+fmtINR(n)}
+
+const CARDS=[
+  {label:'Total Investment',  value:fmtINR(totalInv),  sub:'Deployed capital',   cls:'',           icon:'💰', extra:''},
+  {label:'Current Value',     value:fmtINR(totalCur),  sub:'Market value today', cls:'accent-card', icon:'📈', extra:''},
+  {label:'Total P&L',value:(totalPnL>=0?'+':'-')+fmtINR(totalPnL),sub:fmtPct(totalPnLPct)+' overall return',cls:totalPnL>=0?'green-card':'red-card',icon:totalPnL>=0?'▲':'▼',vclass:totalPnL>=0?'green':'red'},
+  {label:"Day's P&L",value:(dayPnL>=0?'+':'-')+fmtINR(dayPnL,2),sub:fmtPct(dayPnL/totalCur*100)+' today',cls:dayPnL>=0?'green-card':'red-card',icon:dayPnL>=0?'▲':'▼',vclass:dayPnL>=0?'green':'red'},
+  {label:'XIRR',value:'+'+XIRR+'%',sub:'Annualised return',cls:'green-card',icon:'◑',vclass:'green'},
+];
+
+document.getElementById('summaryGrid').innerHTML=CARDS.map(c=>`
+  <div class="sum-card ${c.cls||''}">
+    <div class="sum-icon">${c.icon}</div>
+    <div class="sum-label">${c.label}</div>
+    <div class="sum-value ${c.vclass||''}">${c.value}</div>
+    <div class="sum-sub">${c.sub}</div>
+  </div>`).join('');
+
+// ════════════════════════════════════════════
+// PORTFOLIO CHART
+// ════════════════════════════════════════════
+const TF_DATA = {
+  '1W': genSeries(7,  totalCur, 0.015),
+  '1M': genSeries(30, totalCur, 0.04),
+  '3M': genSeries(90, totalCur, 0.09),
+  '6M': genSeries(180,totalCur, 0.15),
+  '1Y': genSeries(365,totalCur, 0.25),
+};
+
+function genSeries(days, endVal, drift){
+  const pts=[]; let v=endVal*(1-drift);
+  const step=(endVal-v)/days;
+  for(let i=0;i<=days;i++){
+    const noise=(Math.random()-.45)*endVal*0.008;
+    v=Math.max(v*0.9, Math.min(v+(step+noise)*1.1, endVal*1.12));
+    const d=new Date(); d.setDate(d.getDate()-(days-i));
+    pts.push({date:d, val:+(v).toFixed(0)});
+  }
+  pts[pts.length-1].val=endVal; return pts;
+}
+
+let currentTF='1W';
+let pfCanvas, pfCtx;
+
+function setTF(el, tf){
+  document.querySelectorAll('.tf-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); currentTF=tf; drawPfChart();
+}
+
+function drawPfChart(){
+  const wrap=document.getElementById('pfChartWrap');
+  const dpr=window.devicePixelRatio||1;
+  const W=wrap.clientWidth;
+  const H=Math.max(220,Math.min(300,W*0.28));
+  if(!pfCanvas){pfCanvas=document.getElementById('pfChart');pfCtx=pfCanvas.getContext('2d')}
+  pfCanvas.width=W*dpr; pfCanvas.height=H*dpr;
+  pfCanvas.style.height=H+'px'; pfCanvas.style.width='100%';
+  pfCtx.scale(dpr,dpr);
+  const ctx=pfCtx;
+  const pts=TF_DATA[currentTF];
+  const PAD={top:16,right:20,bottom:36,left:68};
+  const cw=W-PAD.left-PAD.right, ch=H-PAD.top-PAD.bottom;
+  const vals=pts.map(p=>p.val);
+  const minV=Math.min(...vals)*0.997, maxV=Math.max(...vals)*1.003;
+
+  ctx.clearRect(0,0,W,H);
+
+  function xp(i){return PAD.left+i/(pts.length-1)*cw}
+  function yp(v){return PAD.top+ch-(v-minV)/(maxV-minV)*ch}
+
+  // Grid
+  ctx.strokeStyle='rgba(37,45,61,.7)'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=PAD.top+ch*i/4;
+    ctx.beginPath();ctx.moveTo(PAD.left,y);ctx.lineTo(PAD.left+cw,y);ctx.stroke();
+    const v=maxV-(maxV-minV)*i/4;
+    ctx.fillStyle='#8892a4';ctx.font='10px JetBrains Mono,monospace';ctx.textAlign='right';
+    ctx.fillText('₹'+(v/100000).toFixed(1)+'L',PAD.left-5,y+4);
+  }
+
+  // X labels
+  const step=Math.max(1,Math.floor(pts.length/5));
+  ctx.fillStyle='#8892a4';ctx.textAlign='center';
+  for(let i=0;i<pts.length;i+=step){
+    const d=pts[i].date;
+    const lbl=d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+    ctx.fillText(lbl,xp(i),H-PAD.bottom+16);
+  }
+
+  // Gradient fill
+  const grad=ctx.createLinearGradient(0,PAD.top,0,H-PAD.bottom);
+  grad.addColorStop(0,'rgba(41,98,255,.22)'); grad.addColorStop(1,'rgba(41,98,255,0)');
+  ctx.beginPath();
+  pts.forEach((p,i)=>i===0?ctx.moveTo(xp(i),yp(p.val)):ctx.lineTo(xp(i),yp(p.val)));
+  ctx.lineTo(xp(pts.length-1),H-PAD.bottom);ctx.lineTo(xp(0),H-PAD.bottom);
+  ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+
+  // Line
+  ctx.beginPath();ctx.lineWidth=2;ctx.strokeStyle='#2962FF';ctx.lineJoin='round';
+  pts.forEach((p,i)=>i===0?ctx.moveTo(xp(i),yp(p.val)):ctx.lineTo(xp(i),yp(p.val)));
+  ctx.stroke();
+
+  // Current value dot
+  const lastI=pts.length-1;
+  ctx.beginPath();ctx.arc(xp(lastI),yp(pts[lastI].val),4,0,Math.PI*2);
+  ctx.fillStyle='#2962FF';ctx.fill();
+  ctx.beginPath();ctx.arc(xp(lastI),yp(pts[lastI].val),8,0,Math.PI*2);
+  ctx.fillStyle='rgba(41,98,255,.25)';ctx.fill();
+
+  // Hover interaction
+  pfCanvas.onmousemove=function(e){
+    const rect=pfCanvas.getBoundingClientRect();
+    const mx=(e.clientX-rect.left);
+    const idx=Math.round((mx-PAD.left)/cw*(pts.length-1));
+    if(idx<0||idx>=pts.length) return;
+    const pt=pts[idx];
+    const tt=document.getElementById('chartTooltip');
+    const prev=idx>0?pts[idx-1].val:pt.val;
+    const chg=pt.val-prev, chgPct=(chg/prev*100);
+    document.getElementById('ttDate').textContent=pt.date.toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+    document.getElementById('ttVal').textContent=fmtINR(pt.val);
+    const ttChg=document.getElementById('ttChg');
+    ttChg.textContent=(chg>=0?'+':'')+fmtINR(chg)+' ('+fmtPct(chgPct)+')';
+    ttChg.style.color=chg>=0?'var(--green)':'var(--red)';
+    tt.style.display='block';
+    let left=mx+12;
+    if(left+140>W) left=mx-152;
+    tt.style.left=left+'px';
+    tt.style.top=(yp(pt.val)-40)+'px';
+
+    // Hover crosshair
+    drawPfChart();
+    ctx.strokeStyle='rgba(209,212,220,.2)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(xp(idx),PAD.top);ctx.lineTo(xp(idx),H-PAD.bottom);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();ctx.arc(xp(idx),yp(pt.val),4,0,Math.PI*2);
+    ctx.fillStyle='#fff';ctx.fill();
+    ctx.beginPath();ctx.arc(xp(idx),yp(pt.val),2.5,0,Math.PI*2);
+    ctx.fillStyle='#2962FF';ctx.fill();
+  };
+  pfCanvas.onmouseleave=function(){document.getElementById('chartTooltip').style.display='none';drawPfChart()};
+}
+
+// ════════════════════════════════════════════
+// DONUT CHART
+// ════════════════════════════════════════════
+function drawDonut(){
+  const canvas=document.getElementById('donutChart');
+  const ctx=canvas.getContext('2d');
+  const W=180,H=180,cx=90,cy=90,R=72,r=44;
+  ctx.clearRect(0,0,W,H);
+  let startAngle=-Math.PI/2;
+  SECTORS.forEach(s=>{
+    const angle=s.pct/100*Math.PI*2;
+    ctx.beginPath();ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,R,startAngle,startAngle+angle);
+    ctx.closePath();ctx.fillStyle=s.color;ctx.fill();
+    startAngle+=angle;
+  });
+  // Hole
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle='#1a1f2e';ctx.fill();
+  // Center text
+  ctx.fillStyle='#fff';ctx.font='bold 14px Syne,sans-serif';ctx.textAlign='center';
+  ctx.fillText(SECTORS.length+' Sectors',cx,cy-4);
+  ctx.fillStyle='#8892a4';ctx.font='10px Syne,sans-serif';
+  ctx.fillText('Allocated',cx,cy+12);
+
+  // Legend
+  document.getElementById('donutLegend').innerHTML=SECTORS.map(s=>`
+    <div class="legend-item">
+      <div class="legend-left">
+        <div class="legend-dot" style="background:${s.color}"></div>
+        <div class="legend-name">${s.name}</div>
+      </div>
+      <div class="legend-pct">${s.pct}%</div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════
+// SPARKLINE
+// ════════════════════════════════════════════
+function drawSparkline(canvas, data, positive){
+  const ctx=canvas.getContext('2d');
+  const W=70,H=26;
+  canvas.width=W;canvas.height=H;
+  ctx.clearRect(0,0,W,H);
+  const min=Math.min(...data),max=Math.max(...data);
+  const xStep=W/(data.length-1);
+  const yp=v=>H-4-(v-min)/(max-min||1)*(H-8);
+  ctx.beginPath();
+  data.forEach((v,i)=>i===0?ctx.moveTo(i*xStep,yp(v)):ctx.lineTo(i*xStep,yp(v)));
+  ctx.strokeStyle=positive?'var(--green)':'var(--red)';
+  ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.stroke();
+}
+
+// ════════════════════════════════════════════
+// HOLDINGS TABLE
+// ════════════════════════════════════════════
+let sortCol='curVal', sortDir=-1, filterQ='', watchlisted=new Set();
+
+function sortBy(col){
+  if(sortCol===col) sortDir*=-1;
+  else{sortCol=col;sortDir=-1}
+  document.querySelectorAll('.htbl thead th').forEach(th=>{
+    th.classList.remove('sorted');
+    if(th.textContent.trim().startsWith(colToLabel(col))) th.classList.add('sorted');
+  });
+  renderHoldings();
+}
+function colToLabel(c){const m={sym:'Symbol',qty:'Qty',avg:'Avg',ltp:'LTP',curVal:'Curr',pnl:'P&L',pnlPct:'P&L',dayChg:'Day'};return m[c]||c}
+
+function filterHoldings(q){filterQ=q.toLowerCase();renderHoldings()}
+
+function renderHoldings(){
+  let data=[...HOLDINGS];
+  if(filterQ) data=data.filter(h=>h.sym.toLowerCase().includes(filterQ)||h.co.toLowerCase().includes(filterQ));
+  data.sort((a,b)=>{
+    let av=a[sortCol],bv=b[sortCol];
+    if(typeof av==='string') av=av.toLowerCase(),bv=bv.toLowerCase();
+    return av<bv?-sortDir:av>bv?sortDir:0;
+  });
+
+  const tbody=document.getElementById('holdingsTbody');
+  tbody.innerHTML='';
+  data.forEach((h,i)=>{
+    const pos=h.pnl>=0;
+    const dayPos=h.dayChgPct>=0;
+    const tr=document.createElement('tr');
+    tr.style.animationDelay=(i*0.04)+'s';
+    tr.innerHTML=`
+      <td>
+        <div class="sym-cell">
+          <div class="sym">${h.sym}</div>
+          <div class="co">${h.co}</div>
+        </div>
+      </td>
+      <td class="val-cell">${h.qty}</td>
+      <td class="val-cell">${fmtINR(h.avg,2)}</td>
+      <td class="val-cell">${fmtINR(h.ltp,2)}</td>
+      <td class="val-cell">${fmtINR(h.curVal,0)}</td>
+      <td class="pnl-cell ${pos?'pos':'neg'}">${pos?'+':'-'}${fmtINR(h.pnl,0)}</td>
+      <td class="pnl-cell ${pos?'pos':'neg'}">${fmtPct(h.pnlPct)}</td>
+      <td class="day-cell ${dayPos?'pos':'neg'}">${dayPos?'+':''}${h.dayChgPct.toFixed(2)}%</td>
+      <td><canvas class="sparkline" width="70" height="26" id="spark-${h.sym}"></canvas></td>
+      <td>
+        <button class="wl-btn ${watchlisted.has(h.sym)?'added':''}" onclick="toggleWL('${h.sym}',this)" title="Add to Watchlist">
+          ${watchlisted.has(h.sym)?'★':'☆'}
+        </button>
+      </td>`;
+    tbody.appendChild(tr);
+    requestAnimationFrame(()=>{
+      const sc=document.getElementById('spark-'+h.sym);
+      if(sc) drawSparkline(sc,h.spark,h.pnl>=0);
+    });
+  });
+
+  // Summary bar
+  const totInv=data.reduce((a,h)=>a+h.invVal,0);
+  const totCur=data.reduce((a,h)=>a+h.curVal,0);
+  const totPnL=totCur-totInv;
+  const totDay=data.reduce((a,h)=>a+h.dayChg*h.qty,0);
+  document.getElementById('holdingsSummary').innerHTML=`
+    <div class="hs-item"><div class="hs-label">Invested</div><div class="hs-val">${fmtINR(totInv)}</div></div>
+    <div class="hs-item"><div class="hs-label">Current</div><div class="hs-val">${fmtINR(totCur)}</div></div>
+    <div class="hs-item"><div class="hs-label">Total P&L</div><div class="hs-val ${totPnL>=0?'green':'red'}">${totPnL>=0?'+':'-'}${fmtINR(totPnL)}</div></div>
+    <div class="hs-item"><div class="hs-label">Day P&L</div><div class="hs-val ${totDay>=0?'green':'red'}">${totDay>=0?'+':'-'}${fmtINR(totDay,0)}</div></div>
+    <div class="hs-item"><div class="hs-label">Stocks</div><div class="hs-val">${data.length}</div></div>
+  `;
+}
+
+function toggleWL(sym, btn){
+  if(watchlisted.has(sym)){watchlisted.delete(sym);btn.textContent='☆';btn.classList.remove('added')}
+  else{watchlisted.add(sym);btn.textContent='★';btn.classList.add('added')}
+}
+
+// ════════════════════════════════════════════
+// POSITIONS TABLE
+// ════════════════════════════════════════════
+function renderPositions(){
+  const tbody=document.getElementById('posTbody');
+  tbody.innerHTML=POSITIONS.map((p,i)=>{
+    const isLong=p.qty>0;
+    const uPos=p.unrealised>=0;
+    const rPos=p.realised>=0;
+    return `<tr style="animation-delay:${i*0.04}s">
+      <td><div class="sym-cell"><div class="sym">${p.sym}</div><span class="pos-badge ${isLong?'pos-long':'pos-short'}">${isLong?'LONG':'SHORT'}</span></div></td>
+      <td class="val-cell">${Math.abs(p.qty)}</td>
+      <td class="val-cell">${fmtINR(p.buyAvg,2)}</td>
+      <td class="val-cell">${fmtINR(p.ltp,2)}</td>
+      <td class="pnl-cell ${uPos?'pos':'neg'}">${uPos?'+':'-'}${fmtINR(p.unrealised,2)}</td>
+      <td class="pnl-cell ${rPos?'pos':'neg'}">${p.realised===0?'—':(rPos?'+':'-')+fmtINR(p.realised,2)}</td>
+      <td><span class="pos-badge" style="background:var(--bg4);color:var(--text2);border:1px solid var(--border2)">${p.product}</span></td>
+    </tr>`;
+  }).join('');
+
+  const totU=POSITIONS.reduce((a,p)=>a+p.unrealised,0);
+  const totR=POSITIONS.reduce((a,p)=>a+p.realised,0);
+  document.getElementById('posSummary').innerHTML=`
+    <div class="hs-item"><div class="hs-label">Open Positions</div><div class="hs-val">${POSITIONS.length}</div></div>
+    <div class="hs-item"><div class="hs-label">Unrealised P&L</div><div class="hs-val ${totU>=0?'green':'red'}">${totU>=0?'+':'-'}${fmtINR(totU,2)}</div></div>
+    <div class="hs-item"><div class="hs-label">Realised P&L</div><div class="hs-val ${totR>=0?'green':'red'}">${totR>=0?'+':'-'}${fmtINR(totR,2)}</div></div>
+    <div class="hs-item"><div class="hs-label">Net P&L</div><div class="hs-val ${(totU+totR)>=0?'green':'red'}">${(totU+totR)>=0?'+':'-'}${fmtINR(totU+totR,2)}</div></div>
+  `;
+}
+
+// ════════════════════════════════════════════
+// TAB SWITCHER
+// ════════════════════════════════════════════
+function switchHTab(el, tab){
+  document.querySelectorAll('.htab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('holdingsView').style.display=tab==='holdings'?'block':'none';
+  document.getElementById('positionsView').style.display=tab==='positions'?'block':'none';
+  document.getElementById('holdingSearch').style.display=tab==='holdings'?'':'none';
+}
+
+// ════════════════════════════════════════════
+// SIDEBAR
+// ════════════════════════════════════════════
+let sidebarOpen=true;
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  if(window.innerWidth<=900){sb.classList.toggle('open')}
+  else{
+    sidebarOpen=!sidebarOpen;
+    sb.classList.toggle('collapsed',!sidebarOpen);
+    document.getElementById('layout').classList.toggle('sidebar-collapsed',!sidebarOpen);
+    setTimeout(()=>{drawPfChart()},320);
+  }
+}
+function collapseSidebar(){
+  sidebarOpen=false;
+  document.getElementById('sidebar').classList.add('collapsed');
+  document.getElementById('layout').classList.add('sidebar-collapsed');
+  setTimeout(drawPfChart,320);
+}
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+window.addEventListener('load',()=>{
+  renderHoldings();
+  renderPositions();
+  requestAnimationFrame(()=>{
+    drawPfChart();
+    drawDonut();
+  });
+});
+window.addEventListener('resize',()=>{drawPfChart()});
+</script>
+</body>
+</html>
