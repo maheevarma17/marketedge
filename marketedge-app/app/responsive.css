@@ -1,0 +1,120 @@
+/* ──────────────────────────────────────────────
+   MarketEdge — Responsive CSS
+   ────────────────────────────────────────────── */
+
+/* Mobile: < 768px */
+@media (max-width: 767px) {
+
+    /* Hide sidebar on mobile */
+    .me-sidebar {
+        display: none !important;
+    }
+
+    /* Remove left padding for main content */
+    .me-main {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+    }
+
+    /* Mobile navbar adjustments */
+    .me-nav-links {
+        display: none !important;
+    }
+
+    .me-hamburger {
+        display: flex !important;
+    }
+
+    /* Mobile nav drawer */
+    .me-mobile-nav {
+        position: fixed;
+        top: 54px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 999;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Grid layouts → single column */
+    .me-grid-2,
+    .me-grid-3,
+    .me-grid-4 {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Tables scroll horizontally */
+    table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Flex wrapping for pills/filters */
+    .me-suggestions {
+        overflow-x: auto;
+        flex-wrap: nowrap !important;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+    }
+
+    /* Page padding */
+    .me-page {
+        padding: 16px !important;
+    }
+
+    /* Font size adjustments */
+    h1,
+    .me-page-title {
+        font-size: 20px !important;
+    }
+}
+
+/* Tablet: 768px — 1024px */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .me-grid-3 {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    .me-grid-4 {
+        grid-template-columns: 1fr 1fr !important;
+    }
+}
+
+/* Desktop: hide hamburger */
+@media (min-width: 768px) {
+    .me-hamburger {
+        display: none !important;
+    }
+}
+
+/* Touch-friendly interactive elements */
+@media (hover: none) {
+
+    button,
+    a,
+    [role="button"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+}

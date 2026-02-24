@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTheme } from '@/lib/theme'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -8,13 +9,14 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const { t } = useTheme()
 
   async function handleLogin() {
     if (!email || !password) return
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -33,45 +35,47 @@ export default function LoginPage() {
     setLoading(false)
   }
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%', background: t.bgInput, border: `1px solid ${t.border}`,
+    borderRadius: '10px', padding: '11px 14px', color: t.text, fontSize: '13px', outline: 'none',
+  }
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#131722' }}>
-      <div style={{ background: '#1a1f2e', border: '1px solid #252d3d', borderRadius: '12px', padding: '36px', width: '360px' }}>
-        <div style={{ fontSize: '24px', fontWeight: 800, color: '#fff', marginBottom: '6px' }}>
-          Market<span style={{ color: '#2962FF' }}>Edge</span>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: t.bg }}>
+      <div style={{ background: t.bgCard, border: `1px solid ${t.border}`, borderRadius: '16px', padding: '36px', width: '380px', boxShadow: t.shadow }}>
+        <div style={{ fontSize: '26px', fontWeight: 800, color: t.text, marginBottom: '4px', letterSpacing: '-0.03em' }}>
+          Market<span style={{ color: t.accent }}>Edge</span>
         </div>
-        <div style={{ fontSize: '12px', color: '#8892a4', marginBottom: '28px' }}>Sign in to your account</div>
+        <div style={{ fontSize: '13px', color: t.textDim, marginBottom: '28px' }}>Sign in to your account</div>
 
         {error && (
-          <div style={{ background: 'rgba(239,83,80,0.1)', border: '1px solid rgba(239,83,80,0.3)', borderRadius: '7px', padding: '10px 14px', fontSize: '12px', color: '#ef5350', marginBottom: '16px' }}>
+          <div style={{ background: `${t.red}15`, border: `1px solid ${t.red}30`, borderRadius: '10px', padding: '10px 14px', fontSize: '12px', color: t.red, marginBottom: '16px' }}>
             {error}
           </div>
         )}
 
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 600, color: '#8892a4', marginBottom: '5px' }}>EMAIL</div>
+        <div style={{ marginBottom: '14px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 600, color: t.textDim, marginBottom: '5px', letterSpacing: '0.04em' }}>EMAIL</div>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            style={{ width: '100%', background: '#1e2438', border: '1px solid #252d3d', borderRadius: '7px', padding: '10px 14px', color: '#D1D4DC', fontSize: '13px', outline: 'none' }} />
+            placeholder="you@example.com" style={inputStyle} />
         </div>
 
-        <div style={{ marginBottom: '20px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 600, color: '#8892a4', marginBottom: '5px' }}>PASSWORD</div>
+        <div style={{ marginBottom: '22px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 600, color: t.textDim, marginBottom: '5px', letterSpacing: '0.04em' }}>PASSWORD</div>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-            placeholder="••••••••"
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            style={{ width: '100%', background: '#1e2438', border: '1px solid #252d3d', borderRadius: '7px', padding: '10px 14px', color: '#D1D4DC', fontSize: '13px', outline: 'none' }} />
+            placeholder="••••••••" onKeyDown={e => e.key === 'Enter' && handleLogin()} style={inputStyle} />
         </div>
 
         <button onClick={handleLogin} disabled={loading} style={{
-          width: '100%', background: '#2962FF', border: 'none', borderRadius: '8px',
+          width: '100%', background: `linear-gradient(135deg, ${t.accent}, #6c63ff)`, border: 'none', borderRadius: '10px',
           color: '#fff', padding: '12px', fontSize: '14px', fontWeight: 700,
-          cursor: 'pointer', opacity: loading ? 0.7 : 1
+          cursor: 'pointer', opacity: loading ? 0.7 : 1, transition: 'opacity .2s',
         }}>
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
 
-        <p style={{ color: '#8892a4', fontSize: '12px', marginTop: '16px', textAlign: 'center' }}>
-          No account? <a href="/signup" style={{ color: '#2962FF', textDecoration: 'none' }}>Sign up free</a>
+        <p style={{ color: t.textDim, fontSize: '12px', marginTop: '16px', textAlign: 'center' }}>
+          No account? <a href="/signup" style={{ color: t.accent, textDecoration: 'none', fontWeight: 600 }}>Sign up free</a>
         </p>
       </div>
     </div>
