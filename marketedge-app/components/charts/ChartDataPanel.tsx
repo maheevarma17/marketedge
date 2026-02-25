@@ -55,7 +55,7 @@ export default function ChartDataPanel({ symbol, stockName, ohlcv, indicatorValu
             {indicatorValues.length > 0 && (
                 <>
                     <div style={{ width: '1px', height: '16px', background: t.border }} />
-                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', pointerEvents: 'auto' }}>
                         {indicatorValues.map((iv, i) => (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span style={{ fontSize: '9px' }}>
