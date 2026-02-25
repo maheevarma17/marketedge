@@ -794,11 +794,14 @@ export default function ChartsPage() {
     function handleKey(e: KeyboardEvent) {
       if (e.ctrlKey && e.key === 'z') { e.preventDefault(); drawingManager.undoLast() }
       if (e.key === 'Delete') { e.preventDefault(); drawingManager.undoLast() }
-      if (e.key === 'Escape') { setActiveDrawingTool(null) }
+      if (e.key === 'Escape') {
+        if (isFullscreen) { setIsFullscreen(false) }
+        else { setActiveDrawingTool(null) }
+      }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [drawingManager])
+  }, [drawingManager, isFullscreen])
 
   // Toggle indicator (Add new one via toolbar)
   function handleToggleIndicator(indicator: IndicatorMeta, params?: Record<string, number>) {
@@ -910,13 +913,15 @@ export default function ChartsPage() {
       {/* 3-Pane Layout */}
       <div style={{ flex: 1, display: 'flex', marginTop: '4px', overflow: 'hidden' }}>
 
-        {/* Left Drawing Toolbar */}
-        <LeftDrawingToolbar
-          activeTool={activeDrawingTool}
-          onSelectTool={setActiveDrawingTool}
-          onUndo={() => drawingManager.undoLast()}
-          onClearAll={() => drawingManager.clearAll()}
-        />
+        {/* Left Drawing Toolbar — hidden in fullscreen */}
+        {!isFullscreen && (
+          <LeftDrawingToolbar
+            activeTool={activeDrawingTool}
+            onSelectTool={setActiveDrawingTool}
+            onUndo={() => drawingManager.undoLast()}
+            onClearAll={() => drawingManager.clearAll()}
+          />
+        )}
 
         {/* Center Chart Grid */}
         <div style={{
@@ -951,11 +956,13 @@ export default function ChartsPage() {
           ))}
         </div>
 
-        {/* Right Watchlist Panel */}
-        <RightWatchlistPanel
-          currentSymbol={panelSymbols[activePanel] || 'RELIANCE'}
-          onSymbolSelect={(sym) => handlePanelSymbolChange(activePanel, sym)}
-        />
+        {/* Right Watchlist Panel — hidden in fullscreen */}
+        {!isFullscreen && (
+          <RightWatchlistPanel
+            currentSymbol={panelSymbols[activePanel] || 'RELIANCE'}
+            onSymbolSelect={(sym) => handlePanelSymbolChange(activePanel, sym)}
+          />
+        )}
       </div>
 
       {/* Footer */}
