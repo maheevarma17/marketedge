@@ -1,18 +1,8 @@
 import { NextResponse } from 'next/server'
 
 // Free Yahoo Finance API - no key needed
-async function getQuote(symbol: string) {
-    // Handle index symbols and NSE stocks
-    let ySymbol = symbol
-    if (symbol.startsWith('^')) {
-        ySymbol = symbol // index symbols like ^NSEI, ^NSEBANK
-    } else if (symbol.includes('.')) {
-        ySymbol = symbol // already has exchange suffix
-    } else {
-        ySymbol = `${symbol}.NS` // NSE stock
-    }
-
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySymbol}?interval=1d&range=1d`
+async function fetchYahooQuote(symbolUrl: string) {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbolUrl}?interval=1d&range=1d`
 
     const res = await fetch(url, {
         headers: {
@@ -32,6 +22,40 @@ async function getQuote(symbol: string) {
         throw new Error('No data found for symbol')
     }
 
+    return result
+}
+
+async function getQuote(symbol: string) {
+    let ySymbol = symbol
+    let isIndex = false
+
+    if (symbol.startsWith('^')) {
+        ySymbol = symbol // index symbols like ^NSEI, ^NSEBANK
+        isIndex = true
+    } else if (symbol.includes('.')) {
+        ySymbol = symbol // already has exchange suffix
+    } else {
+        ySymbol = `${symbol}.NS` // NSE stock
+    }
+
+    let result
+    try {
+        result = await fetchYahooQuote(ySymbol)
+    } catch (error) {
+        // Smart Fallback: If NSE fails, try BSE
+        if (!isIndex && symbol === ySymbol.split('.')[0] && ySymbol.endsWith('.NS')) {
+            const bseSymbol = `${symbol}.BO`
+            try {
+                result = await fetchYahooQuote(bseSymbol)
+                ySymbol = bseSymbol
+            } catch (bseError) {
+                throw error
+            }
+        } else {
+            throw error
+        }
+    }
+
     const meta = result.meta
     const price = meta.regularMarketPrice
     const prevClose = meta.chartPreviousClose || meta.previousClose
@@ -48,7 +72,7 @@ async function getQuote(symbol: string) {
         dayHigh: meta.regularMarketDayHigh,
         dayLow: meta.regularMarketDayLow,
         volume: meta.regularMarketVolume,
-        exchange: meta.exchangeName,
+        exchange: meta.exchangeName || (ySymbol.endsWith('.BO') ? 'BSE' : 'NSE'),
         currency: meta.currency,
         marketState: meta.marketState, // PRE, REGULAR, POST, CLOSED
         timestamp: Date.now()

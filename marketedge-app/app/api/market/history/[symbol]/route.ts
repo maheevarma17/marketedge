@@ -1,5 +1,28 @@
 import { NextResponse } from 'next/server'
 
+async function fetchYahoo(symbolUrl: string, interval: string, range: string) {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbolUrl}?interval=${interval}&range=${range}`
+    const res = await fetch(url, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        },
+        next: { revalidate: 3600 } // cache for 1 hour (historical data doesn't change)
+    })
+
+    if (!res.ok) {
+        throw new Error(`Yahoo Finance API error: ${res.status}`)
+    }
+
+    const data = await res.json()
+    const result = data.chart?.result?.[0]
+
+    if (!result) {
+        throw new Error('No data found for symbol')
+    }
+
+    return result
+}
+
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ symbol: string }> }
@@ -14,32 +37,34 @@ export async function GET(
             return NextResponse.json({ error: 'Symbol is required' }, { status: 400 })
         }
 
-        // Handle index symbols
         let ySymbol = symbol.toUpperCase()
+        let isIndex = false
+
         if (ySymbol.startsWith('^')) {
-            // keep as-is
-        } else if (!ySymbol.includes('.')) {
+            isIndex = true
+        } else if (ySymbol.includes('.')) {
+            // Already has an exchange suffix, try it directly
+        } else {
+            // No suffix provided. Try NSE first, fallback to BSE later if needed
             ySymbol = `${ySymbol}.NS`
         }
 
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySymbol}?interval=${interval}&range=${range}`
-
-        const res = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            },
-            next: { revalidate: 3600 } // cache for 1 hour (historical data doesn't change)
-        })
-
-        if (!res.ok) {
-            throw new Error(`Yahoo Finance API error: ${res.status}`)
-        }
-
-        const data = await res.json()
-        const result = data.chart?.result?.[0]
-
-        if (!result) {
-            throw new Error('No data found for symbol')
+        let result
+        try {
+            result = await fetchYahoo(ySymbol, interval, range)
+        } catch (error) {
+            // Smart Fallback: If NSE fails and it's not an index/explicit suffix, try BSE
+            if (!isIndex && symbol.toUpperCase() === ySymbol.split('.')[0] && ySymbol.endsWith('.NS')) {
+                const bseSymbol = `${symbol.toUpperCase()}.BO`
+                try {
+                    result = await fetchYahoo(bseSymbol, interval, range)
+                    ySymbol = bseSymbol // update ySymbol to BSE if successful
+                } catch (bseError) {
+                    throw error // throw original NSE error if both fail
+                }
+            } else {
+                throw error
+            }
         }
 
         const timestamps = result.timestamp || []
@@ -62,7 +87,7 @@ export async function GET(
             symbol: symbol.toUpperCase(),
             name: result.meta?.shortName || result.meta?.longName || symbol,
             currency: result.meta?.currency || 'INR',
-            exchange: result.meta?.exchangeName || 'NSE',
+            exchange: result.meta?.exchangeName || (ySymbol.endsWith('.BO') ? 'BSE' : 'NSE'),
             range,
             interval,
             count: candles.length,

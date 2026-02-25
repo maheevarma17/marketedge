@@ -1,5 +1,28 @@
 import { NextResponse } from 'next/server'
 
+async function fetchYahooIntraday(symbolUrl: string, interval: string, range: string) {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbolUrl}?interval=${interval}&range=${range}`
+    const res = await fetch(url, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        },
+        next: { revalidate: 60 } // cache for 1 minute (intraday data changes frequently)
+    })
+
+    if (!res.ok) {
+        throw new Error(`Yahoo Finance API error: ${res.status}`)
+    }
+
+    const data = await res.json()
+    const result = data.chart?.result?.[0]
+
+    if (!result) {
+        throw new Error('No intraday data found for symbol')
+    }
+
+    return result
+}
+
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ symbol: string }> }
@@ -15,7 +38,13 @@ export async function GET(
         }
 
         let ySymbol = symbol.toUpperCase()
-        if (!ySymbol.startsWith('^') && !ySymbol.includes('.')) {
+        let isIndex = false
+
+        if (ySymbol.startsWith('^')) {
+            isIndex = true
+        } else if (ySymbol.includes('.')) {
+            // Already has an exchange suffix
+        } else {
             ySymbol = `${ySymbol}.NS`
         }
 
@@ -23,24 +52,22 @@ export async function GET(
         // 1m: max 7 days, 5m/15m: max 60 days, 30m/1h: max 730 days
         const range = days <= 7 ? `${days}d` : days <= 60 ? `${days}d` : `${Math.min(days, 730)}d`
 
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySymbol}?interval=${interval}&range=${range}`
-
-        const res = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            },
-            next: { revalidate: 60 } // cache for 1 minute (intraday data changes frequently)
-        })
-
-        if (!res.ok) {
-            throw new Error(`Yahoo Finance API error: ${res.status}`)
-        }
-
-        const data = await res.json()
-        const result = data.chart?.result?.[0]
-
-        if (!result) {
-            throw new Error('No intraday data found for symbol')
+        let result
+        try {
+            result = await fetchYahooIntraday(ySymbol, interval, range)
+        } catch (error) {
+            // Smart Fallback: If NSE fails, try BSE
+            if (!isIndex && symbol.toUpperCase() === ySymbol.split('.')[0] && ySymbol.endsWith('.NS')) {
+                const bseSymbol = `${symbol.toUpperCase()}.BO`
+                try {
+                    result = await fetchYahooIntraday(bseSymbol, interval, range)
+                    ySymbol = bseSymbol
+                } catch (bseError) {
+                    throw error
+                }
+            } else {
+                throw error
+            }
         }
 
         const timestamps = result.timestamp || []
@@ -63,7 +90,7 @@ export async function GET(
             symbol: symbol.toUpperCase(),
             name: result.meta?.shortName || result.meta?.longName || symbol,
             currency: result.meta?.currency || 'INR',
-            exchange: result.meta?.exchangeName || 'NSE',
+            exchange: result.meta?.exchangeName || (ySymbol.endsWith('.BO') ? 'BSE' : 'NSE'),
             interval,
             count: candles.length,
             candles,
