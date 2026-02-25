@@ -33,34 +33,17 @@ export default function ChartDataPanel({ symbol, stockName, ohlcv, indicatorValu
             gap: '12px',
             alignItems: 'center',
             padding: '4px 12px',
-            background: `${t.bgCard}ee`,
-            borderBottom: `1px solid ${t.border}30`,
+            background: `${t.bgCard}dd`,
+            borderBottom: `1px solid ${t.border}20`,
             flexWrap: 'wrap',
-            minHeight: '28px',
+            minHeight: '24px',
             ...mono,
-            fontSize: '11px',
-            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 // stick to top inside chart container
+            fontSize: '10px',
+            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+            pointerEvents: 'none',
         }}>
-            {/* Symbol & Name */}
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                <span style={{ fontWeight: 800, color: t.text, fontSize: '13px' }}>{symbol}</span>
-                <span style={{ color: t.textDim, fontSize: '9px' }}>{stockName}</span>
-            </div>
-
-            {/* Price */}
-            <span style={{ fontWeight: 700, color: t.text, fontSize: '14px' }}>
-                ₹{ohlcv.close.toLocaleString('en-IN')}
-            </span>
-
-            {/* Change */}
-            <span style={{ fontWeight: 700, color: isUp ? t.green : t.red, fontSize: '11px' }}>
-                {isUp ? '▲' : '▼'} {isUp ? '+' : ''}{priceChange.toFixed(2)} ({isUp ? '+' : ''}{priceChangePct.toFixed(2)}%)
-            </span>
-
-            <div style={{ width: '1px', height: '16px', background: t.border }} />
-
             {/* OHLCV */}
-            <div style={{ display: 'flex', gap: '10px', color: t.textDim, fontSize: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', color: t.textDim, fontSize: '10px', pointerEvents: 'auto' }}>
                 <span>O <span style={{ color: ohlcv.open >= ohlcv.close ? t.red : t.green, fontWeight: 600 }}>{ohlcv.open.toFixed(2)}</span></span>
                 <span>H <span style={{ color: t.green, fontWeight: 600 }}>{ohlcv.high.toFixed(2)}</span></span>
                 <span>L <span style={{ color: t.red, fontWeight: 600 }}>{ohlcv.low.toFixed(2)}</span></span>

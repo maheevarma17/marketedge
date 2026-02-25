@@ -686,24 +686,23 @@ function ChartPanel({
         )}
       </div>
 
-      {/* Data panel */}
-      <ChartDataPanel
-        symbol={symbol}
-        stockName={stockName}
-        ohlcv={displayCandle}
-        priceChange={priceChange}
-        priceChangePct={priceChangePct}
-        indicatorValues={activeIndicators.map(ai => {
-          const meta = INDICATOR_LIST.find(m => m.id === ai.id)
-          return { name: meta?.shortName || ai.id, value: '—', color: ai.color, indicator: ai }
-        })}
-        onConfigureIndicator={onConfigureIndicator}
-        onToggleVisibility={onToggleVisibility}
-        onRemoveIndicator={onRemoveIndicator}
-      />
-
       {/* Chart */}
       <div style={{ flex: 1, position: 'relative', background: t.bgCard }}>
+        {/* Data panel — overlays on chart canvas, NOT the search header */}
+        <ChartDataPanel
+          symbol={symbol}
+          stockName={stockName}
+          ohlcv={displayCandle}
+          priceChange={priceChange}
+          priceChangePct={priceChangePct}
+          indicatorValues={activeIndicators.map(ai => {
+            const meta = INDICATOR_LIST.find(m => m.id === ai.id)
+            return { name: meta?.shortName || ai.id, value: '—', color: ai.color, indicator: ai }
+          })}
+          onConfigureIndicator={onConfigureIndicator}
+          onToggleVisibility={onToggleVisibility}
+          onRemoveIndicator={onRemoveIndicator}
+        />
         {loading ? (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.textDim, fontSize: '12px', zIndex: 10 }}>
             <div style={{ textAlign: 'center' }}>
