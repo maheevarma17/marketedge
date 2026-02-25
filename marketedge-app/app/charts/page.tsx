@@ -48,6 +48,7 @@ const QUICK_SYMBOLS = ['RELIANCE', 'TCS', 'INFY', 'SBIN', 'HDFCBANK', 'TATAMOTOR
 
 interface CandleData {
   date: string
+  timestamp?: number  // UNIX seconds — needed for intraday
   open: number
   high: number
   low: number
@@ -198,8 +199,13 @@ function ChartPanel({
       displayCandles = toHeikinAshi(visibleCandles)
     }
 
+    // For intraday, use UNIX timestamps; for daily, use date strings
+    const isIntradayChart = ['1m', '5m', '15m', '30m', '1h'].includes(interval)
+    // Helper: returns the correct time value for lightweight-charts
+    const getTime = (c: CandleData): any => (isIntradayChart && c.timestamp) ? c.timestamp : c.date as string
+
     const chartData = displayCandles.map(c => ({
-      time: c.date as string,
+      time: getTime(c),
       open: c.open,
       high: c.high,
       low: c.low,
@@ -288,38 +294,38 @@ function ChartPanel({
         switch (ai.id) {
           case 'sma': {
             const vals = calcSMA(closes, ai.params.period || 20)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
+            const lineData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: `SMA ${ai.params.period}` }).setData(lineData)
             break
           }
           case 'ema': {
             const vals = calcEMA(closes, ai.params.period || 9)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
+            const lineData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: `EMA ${ai.params.period}` }).setData(lineData)
             break
           }
           case 'wma': {
             const vals = wma(closes, ai.params.period || 20)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
+            const lineData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: `WMA ${ai.params.period}` }).setData(lineData)
             break
           }
           case 'dema': {
             const vals = dema(closes, ai.params.period || 20)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
+            const lineData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: `DEMA ${ai.params.period}` }).setData(lineData)
             break
           }
           case 'tema': {
             const vals = tema(closes, ai.params.period || 20)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
+            const lineData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: `TEMA ${ai.params.period}` }).setData(lineData)
             break
           }
           case 'supertrend': {
             const result = supertrend(ohlcvCandles, ai.params.period || 10, ai.params.multiplier || 3)
             const stData = candles.map((c, i) => ({
-              time: c.date as string,
+              time: getTime(c),
               value: result.supertrend[i] as number,
               color: result.direction[i] === 1 ? t.green : t.red,
             })).filter(d => d.value !== null && d.value !== undefined)
@@ -333,7 +339,7 @@ function ChartPanel({
           case 'parabolicSar': {
             const result = parabolicSar(ohlcvCandles, ai.params.step || 0.02, ai.params.max || 0.2)
             const sarData = candles.map((c, i) => ({
-              time: c.date as string,
+              time: getTime(c),
               value: result.sar[i] as number,
               color: result.direction[i] === 1 ? t.green : t.red,
             })).filter(d => d.value !== null)
@@ -343,10 +349,10 @@ function ChartPanel({
           }
           case 'ichimoku': {
             const result = ichimoku(ohlcvCandles, ai.params.tenkan || 9, ai.params.kijun || 26, ai.params.senkou || 52)
-            const tenkan = candles.map((c, i) => ({ time: c.date as string, value: result.tenkanSen[i] as number })).filter(d => d.value !== null)
-            const kijun = candles.map((c, i) => ({ time: c.date as string, value: result.kijunSen[i] as number })).filter(d => d.value !== null)
-            const senkouA = candles.map((c, i) => ({ time: c.date as string, value: result.senkouA[i] as number })).filter(d => d.value !== null)
-            const senkouB = candles.map((c, i) => ({ time: c.date as string, value: result.senkouB[i] as number })).filter(d => d.value !== null)
+            const tenkan = candles.map((c, i) => ({ time: getTime(c), value: result.tenkanSen[i] as number })).filter(d => d.value !== null)
+            const kijun = candles.map((c, i) => ({ time: getTime(c), value: result.kijunSen[i] as number })).filter(d => d.value !== null)
+            const senkouA = candles.map((c, i) => ({ time: getTime(c), value: result.senkouA[i] as number })).filter(d => d.value !== null)
+            const senkouB = candles.map((c, i) => ({ time: getTime(c), value: result.senkouB[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: '#2962FF', lineWidth: 1, title: 'Tenkan' }).setData(tenkan)
             chart.addSeries(LineSeries, { color: '#ef5350', lineWidth: 1, title: 'Kijun' }).setData(kijun)
             chart.addSeries(LineSeries, { color: '#26a69a', lineWidth: 1, title: 'Senkou A' }).setData(senkouA)
@@ -355,15 +361,15 @@ function ChartPanel({
           }
           case 'vwap': {
             const vals = vwap(ohlcvCandles)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
+            const lineData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 2, title: 'VWAP' }).setData(lineData)
             break
           }
           case 'bollingerBands': {
             const result = bollingerBands(closes, ai.params.period || 20, ai.params.stdDev || 2)
-            const upper = candles.map((c, i) => ({ time: c.date as string, value: result.upper[i] as number })).filter(d => d.value !== null)
-            const mid = candles.map((c, i) => ({ time: c.date as string, value: result.middle[i] as number })).filter(d => d.value !== null)
-            const lower = candles.map((c, i) => ({ time: c.date as string, value: result.lower[i] as number })).filter(d => d.value !== null)
+            const upper = candles.map((c, i) => ({ time: getTime(c), value: result.upper[i] as number })).filter(d => d.value !== null)
+            const mid = candles.map((c, i) => ({ time: getTime(c), value: result.middle[i] as number })).filter(d => d.value !== null)
+            const lower = candles.map((c, i) => ({ time: getTime(c), value: result.lower[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: '#8892a4', lineWidth: 1, lineStyle: 2, title: 'BB U' }).setData(upper)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: 'BB M' }).setData(mid)
             chart.addSeries(LineSeries, { color: '#8892a4', lineWidth: 1, lineStyle: 2, title: 'BB L' }).setData(lower)
@@ -371,9 +377,9 @@ function ChartPanel({
           }
           case 'keltnerChannel': {
             const result = keltnerChannel(ohlcvCandles, ai.params.period || 20, ai.params.multiplier || 1.5)
-            const upper = candles.map((c, i) => ({ time: c.date as string, value: result.upper[i] as number })).filter(d => d.value !== null)
-            const mid = candles.map((c, i) => ({ time: c.date as string, value: result.middle[i] as number })).filter(d => d.value !== null)
-            const lower = candles.map((c, i) => ({ time: c.date as string, value: result.lower[i] as number })).filter(d => d.value !== null)
+            const upper = candles.map((c, i) => ({ time: getTime(c), value: result.upper[i] as number })).filter(d => d.value !== null)
+            const mid = candles.map((c, i) => ({ time: getTime(c), value: result.middle[i] as number })).filter(d => d.value !== null)
+            const lower = candles.map((c, i) => ({ time: getTime(c), value: result.lower[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: '#ce93d8', lineWidth: 1, lineStyle: 2, title: 'KC U' }).setData(upper)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: 'KC M' }).setData(mid)
             chart.addSeries(LineSeries, { color: '#ce93d8', lineWidth: 1, lineStyle: 2, title: 'KC L' }).setData(lower)
@@ -381,9 +387,9 @@ function ChartPanel({
           }
           case 'donchianChannel': {
             const result = donchianChannel(ohlcvCandles, ai.params.period || 20)
-            const upper = candles.map((c, i) => ({ time: c.date as string, value: result.upper[i] as number })).filter(d => d.value !== null)
-            const mid = candles.map((c, i) => ({ time: c.date as string, value: result.middle[i] as number })).filter(d => d.value !== null)
-            const lower = candles.map((c, i) => ({ time: c.date as string, value: result.lower[i] as number })).filter(d => d.value !== null)
+            const upper = candles.map((c, i) => ({ time: getTime(c), value: result.upper[i] as number })).filter(d => d.value !== null)
+            const mid = candles.map((c, i) => ({ time: getTime(c), value: result.middle[i] as number })).filter(d => d.value !== null)
+            const lower = candles.map((c, i) => ({ time: getTime(c), value: result.lower[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: '#4dd0e1', lineWidth: 1, lineStyle: 2, title: 'DC U' }).setData(upper)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: 'DC M' }).setData(mid)
             chart.addSeries(LineSeries, { color: '#4dd0e1', lineWidth: 1, lineStyle: 2, title: 'DC L' }).setData(lower)
@@ -406,7 +412,7 @@ function ChartPanel({
         switch (ai.id) {
           case 'rsi': {
             const vals = calcRSI(closes, ai.params.period || 14)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
+            const lineData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] as number })).filter(d => d.value !== null)
             const series = chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: `RSI ${ai.params.period || 14}`, priceScaleId: paneId })
             series.setData(lineData)
             chart.priceScale(paneId).applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } })
@@ -414,9 +420,9 @@ function ChartPanel({
           }
           case 'macd': {
             const result = calcMACD(closes)
-            const macdData = candles.map((c, i) => ({ time: c.date as string, value: result.macd[i] as number })).filter(d => d.value !== null)
-            const signalData = candles.map((c, i) => ({ time: c.date as string, value: result.signal[i] as number })).filter(d => d.value !== null)
-            const histData = candles.map((c, i) => ({ time: c.date as string, value: result.histogram[i] as number, color: (result.histogram[i] || 0) >= 0 ? t.green + '80' : t.red + '80' })).filter(d => d.value !== null)
+            const macdData = candles.map((c, i) => ({ time: getTime(c), value: result.macd[i] as number })).filter(d => d.value !== null)
+            const signalData = candles.map((c, i) => ({ time: getTime(c), value: result.signal[i] as number })).filter(d => d.value !== null)
+            const histData = candles.map((c, i) => ({ time: getTime(c), value: result.histogram[i] as number, color: (result.histogram[i] || 0) >= 0 ? t.green + '80' : t.red + '80' })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: '#2962FF', lineWidth: 1, title: 'MACD', priceScaleId: paneId }).setData(macdData)
             chart.addSeries(LineSeries, { color: '#ff7043', lineWidth: 1, title: 'Signal', priceScaleId: paneId }).setData(signalData)
             chart.addSeries(HistogramSeries, { priceScaleId: paneId }).setData(histData)
@@ -425,8 +431,8 @@ function ChartPanel({
           }
           case 'stochastic': {
             const result = stochastic(ohlcvCandles, ai.params.kPeriod || 14, ai.params.dPeriod || 3)
-            const kData = candles.map((c, i) => ({ time: c.date as string, value: result.k[i] as number })).filter(d => d.value !== null)
-            const dData = candles.map((c, i) => ({ time: c.date as string, value: result.d[i] as number })).filter(d => d.value !== null)
+            const kData = candles.map((c, i) => ({ time: getTime(c), value: result.k[i] as number })).filter(d => d.value !== null)
+            const dData = candles.map((c, i) => ({ time: getTime(c), value: result.d[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: '#2962FF', lineWidth: 1, title: '%K', priceScaleId: paneId }).setData(kData)
             chart.addSeries(LineSeries, { color: '#ff7043', lineWidth: 1, title: '%D', priceScaleId: paneId }).setData(dData)
             chart.priceScale(paneId).applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } })
@@ -434,44 +440,44 @@ function ChartPanel({
           }
           case 'williamsR': {
             const vals = williamsR(ohlcvCandles, ai.params.period || 14)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
+            const lineData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: '%R', priceScaleId: paneId }).setData(lineData)
             chart.priceScale(paneId).applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } })
             break
           }
           case 'cci': {
             const vals = cci(ohlcvCandles, ai.params.period || 20)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
+            const lineData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: 'CCI', priceScaleId: paneId }).setData(lineData)
             chart.priceScale(paneId).applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } })
             break
           }
           case 'roc': {
             const vals = roc(closes, ai.params.period || 12)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
+            const lineData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: 'ROC', priceScaleId: paneId }).setData(lineData)
             chart.priceScale(paneId).applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } })
             break
           }
           case 'mfi': {
             const vals = mfi(ohlcvCandles, ai.params.period || 14)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
+            const lineData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: 'MFI', priceScaleId: paneId }).setData(lineData)
             chart.priceScale(paneId).applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } })
             break
           }
           case 'atr': {
             const vals = atr(ohlcvCandles, ai.params.period || 14)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
+            const lineData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: 'ATR', priceScaleId: paneId }).setData(lineData)
             chart.priceScale(paneId).applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } })
             break
           }
           case 'adx': {
             const result = adx(ohlcvCandles, ai.params.period || 14)
-            const adxData = candles.map((c, i) => ({ time: c.date as string, value: result.adx[i] as number })).filter(d => d.value !== null)
-            const pdiData = candles.map((c, i) => ({ time: c.date as string, value: result.plusDI[i] as number })).filter(d => d.value !== null)
-            const mdiData = candles.map((c, i) => ({ time: c.date as string, value: result.minusDI[i] as number })).filter(d => d.value !== null)
+            const adxData = candles.map((c, i) => ({ time: getTime(c), value: result.adx[i] as number })).filter(d => d.value !== null)
+            const pdiData = candles.map((c, i) => ({ time: getTime(c), value: result.plusDI[i] as number })).filter(d => d.value !== null)
+            const mdiData = candles.map((c, i) => ({ time: getTime(c), value: result.minusDI[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 2, title: 'ADX', priceScaleId: paneId }).setData(adxData)
             chart.addSeries(LineSeries, { color: t.green, lineWidth: 1, title: '+DI', priceScaleId: paneId }).setData(pdiData)
             chart.addSeries(LineSeries, { color: t.red, lineWidth: 1, title: '-DI', priceScaleId: paneId }).setData(mdiData)
@@ -480,35 +486,35 @@ function ChartPanel({
           }
           case 'obv': {
             const vals = obv(ohlcvCandles)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] }))
+            const lineData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] }))
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: 'OBV', priceScaleId: paneId }).setData(lineData)
             chart.priceScale(paneId).applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } })
             break
           }
           case 'ad': {
             const vals = accumulationDistribution(ohlcvCandles)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] }))
+            const lineData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] }))
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: 'A/D', priceScaleId: paneId }).setData(lineData)
             chart.priceScale(paneId).applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } })
             break
           }
           case 'cmf': {
             const vals = cmf(ohlcvCandles, ai.params.period || 20)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
+            const lineData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] as number })).filter(d => d.value !== null)
             chart.addSeries(HistogramSeries, { priceScaleId: paneId }).setData(lineData.map(d => ({ ...d, color: d.value >= 0 ? t.green + '80' : t.red + '80' })))
             chart.priceScale(paneId).applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } })
             break
           }
           case 'ao': {
             const vals = awesomeOscillator(ohlcvCandles, ai.params.fast || 5, ai.params.slow || 34)
-            const histData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] as number, color: (vals[i] || 0) >= 0 ? t.green + '80' : t.red + '80' })).filter(d => d.value !== null)
+            const histData = candles.map((c, i) => ({ time: getTime(c), value: vals[i] as number, color: (vals[i] || 0) >= 0 ? t.green + '80' : t.red + '80' })).filter(d => d.value !== null)
             chart.addSeries(HistogramSeries, { priceScaleId: paneId, title: 'AO' }).setData(histData)
             chart.priceScale(paneId).applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } })
             break
           }
           case 'trix': {
             const vals = trix(closes, ai.params.period || 15)
-            const lineData = visibleCandles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
+            const lineData = visibleCandles.map((c, i) => ({ time: getTime(c), value: vals[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: 'TRIX', priceScaleId: paneId }).setData(lineData)
             chart.priceScale(paneId).applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } })
             break
@@ -527,7 +533,7 @@ function ChartPanel({
       })
       chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } })
       volSeries.setData(visibleCandles.map(c => ({
-        time: c.date as string,
+        time: getTime(c),
         value: c.volume,
         color: c.close >= c.open ? t.green + '30' : t.red + '30',
       })))
@@ -967,8 +973,8 @@ export default function ChartsPage() {
 
       {/* Footer */}
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: t.textDim, padding: '4px 4px 0', fontFamily: 'JetBrains Mono, monospace' }}>
-        <span>Market<span style={{ color: t.accent }}>Edge</span> Pro Charts · {activeIndicators.length} indicators · {layoutConfig.label} layout · Keyboard: Ctrl+Z undo · Esc cancel · Del remove</span>
-        <span>Data: Yahoo Finance · 100% Free & Open Source · No limits</span>
+        <span>Market<span style={{ color: t.accent }}>Edge</span> Pro Charts · {activeIndicators.length} indicators · {layoutConfig.label} layout · Keyboard: Ctrl+Z undo · Esc {isFullscreen ? 'exit fullscreen' : 'cancel'} · Del remove</span>
+        <span>Data: Yahoo Finance · 100% Free &amp; Open Source · No limits</span>
       </div>
 
       {/* Indicator Settings Modal */}

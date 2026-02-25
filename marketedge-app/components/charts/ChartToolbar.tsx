@@ -116,7 +116,7 @@ export default function ChartToolbar(props: ChartToolbarProps) {
         position: 'absolute',
         top: '100%',
         left: 0,
-        zIndex: 500,
+        zIndex: 10001, // Must be above fullscreen z-index (9999)
         marginTop: '4px',
         background: t.bgCard,
         border: `1px solid ${t.accent}`,
@@ -139,7 +139,7 @@ export default function ChartToolbar(props: ChartToolbarProps) {
     const templates = LayoutManager.getTemplates()
 
     return (
-        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '4px 8px', flexWrap: 'wrap', background: t.bgCard, borderBottom: `1px solid ${t.border}`, borderRadius: '8px 8px 0 0' }}>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '4px 8px', flexWrap: 'wrap', background: t.bgCard, borderBottom: `1px solid ${t.border}`, borderRadius: '8px 8px 0 0', position: 'relative', zIndex: 10, overflow: 'visible' }}>
 
             {/* Timeframe Ranges */}
             <div style={{ display: 'flex', gap: '1px', background: t.bgInput, borderRadius: '5px', padding: '2px' }}>
@@ -321,9 +321,22 @@ export default function ChartToolbar(props: ChartToolbarProps) {
             {/* Right side actions */}
             <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
                 <div onClick={props.onScreenshot} style={{ ...btnBase(), padding: '4px 8px' }} title="Screenshot">📸</div>
-                <div onClick={props.onFullscreen} style={{ ...btnBase(props.isFullscreen), padding: '4px 8px' }} title="Fullscreen">
-                    {props.isFullscreen ? '⊠' : '⛶'}
-                </div>
+                {props.isFullscreen ? (
+                    <div onClick={props.onFullscreen} style={{
+                        ...btnBase(true),
+                        padding: '4px 12px',
+                        background: '#ef4444',
+                        color: '#fff',
+                        display: 'flex', alignItems: 'center', gap: '4px',
+                        fontWeight: 700, fontSize: '11px',
+                    }} title="Exit Fullscreen (ESC)">
+                        EXIT ✕
+                    </div>
+                ) : (
+                    <div onClick={props.onFullscreen} style={{ ...btnBase(), padding: '4px 8px' }} title="Fullscreen">
+                        ⛶
+                    </div>
+                )}
             </div>
         </div>
     )
