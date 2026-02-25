@@ -919,15 +919,13 @@ export default function ChartsPage() {
       {/* 3-Pane Layout */}
       <div style={{ flex: 1, display: 'flex', marginTop: '4px', overflow: 'hidden' }}>
 
-        {/* Left Drawing Toolbar — hidden in fullscreen */}
-        {!isFullscreen && (
-          <LeftDrawingToolbar
-            activeTool={activeDrawingTool}
-            onSelectTool={setActiveDrawingTool}
-            onUndo={() => drawingManager.undoLast()}
-            onClearAll={() => drawingManager.clearAll()}
-          />
-        )}
+        {/* Left Drawing Toolbar — always visible */}
+        <LeftDrawingToolbar
+          activeTool={activeDrawingTool}
+          onSelectTool={setActiveDrawingTool}
+          onUndo={() => drawingManager.undoLast()}
+          onClearAll={() => drawingManager.clearAll()}
+        />
 
         {/* Center Chart Grid */}
         <div style={{
