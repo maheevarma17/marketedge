@@ -71,7 +71,61 @@ function toHeikinAshi(candles: CandleData[]): CandleData[] {
   return ha
 }
 
-// ─── Chart Panel Component ───
+// ─── Canvas Drawing Helpers ───
+function drawArrowHead(ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number, size: number) {
+  const angle = Math.atan2(toY - fromY, toX - fromX)
+  ctx.beginPath()
+  ctx.moveTo(toX, toY)
+  ctx.lineTo(toX - size * Math.cos(angle - Math.PI / 6), toY - size * Math.sin(angle - Math.PI / 6))
+  ctx.lineTo(toX - size * Math.cos(angle + Math.PI / 6), toY - size * Math.sin(angle + Math.PI / 6))
+  ctx.closePath()
+  ctx.fillStyle = ctx.strokeStyle
+  ctx.fill()
+}
+
+function drawFibPreview(ctx: CanvasRenderingContext2D, start: { x: number; y: number }, end: { x: number; y: number }, canvas: HTMLCanvasElement) {
+  const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1]
+  const colors = ['#ef5350', '#ff7043', '#ffa726', '#f0b429', '#66bb6a', '#26a69a', '#2962FF']
+  const dy = end.y - start.y
+  levels.forEach((level, i) => {
+    const y = start.y + dy * level
+    ctx.save()
+    ctx.strokeStyle = colors[i] || '#f0b429'
+    ctx.lineWidth = 1
+    ctx.setLineDash([4, 3])
+    ctx.globalAlpha = 0.8
+    ctx.beginPath()
+    ctx.moveTo(Math.min(start.x, end.x), y)
+    ctx.lineTo(Math.max(start.x, end.x, canvas.width * 0.9), y)
+    ctx.stroke()
+    ctx.fillStyle = colors[i] || '#f0b429'
+    ctx.font = '9px JetBrains Mono, monospace'
+    ctx.fillText(`${(level * 100).toFixed(1)}%`, Math.max(start.x, end.x) + 8, y + 3)
+    ctx.restore()
+  })
+}
+
+function drawFibStored(ctx: CanvasRenderingContext2D, p1: { x: number; y: number }, p2: { x: number; y: number }, canvas: HTMLCanvasElement, color: string) {
+  const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1]
+  const dy = p2.y - p1.y
+  levels.forEach((level) => {
+    const y = p1.y + dy * level
+    ctx.save()
+    ctx.strokeStyle = color
+    ctx.lineWidth = 1
+    ctx.setLineDash([4, 3])
+    ctx.globalAlpha = 0.6
+    ctx.beginPath()
+    ctx.moveTo(0, y)
+    ctx.lineTo(canvas.width, y)
+    ctx.stroke()
+    ctx.fillStyle = color
+    ctx.font = '9px JetBrains Mono, monospace'
+    ctx.fillText(`${(level * 100).toFixed(1)}%`, canvas.width - 60, y - 3)
+    ctx.restore()
+  })
+}
+
 interface ChartPanelProps {
   panelIndex: number
   symbol: string
@@ -568,6 +622,336 @@ function ChartPanel({
       chartRef.current = null
     }
   }, [visibleCandles, chartType, activeIndicators, showVolume, t, interval])
+
+  // ─── Drawing Interaction ───
+  useEffect(() => {
+    const canvas = drawingCanvasRef.current
+    const chart = chartRef.current
+    if (!canvas || !chart || !activeDrawingTool) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    // Ensure canvas matches container size
+    const container = chartContainerRef.current
+    if (container) {
+      canvas.width = container.clientWidth
+      canvas.height = container.clientHeight
+    }
+
+    const toolMeta = DRAWING_TOOLS.find(dt => dt.type === activeDrawingTool)
+    if (!toolMeta) return
+
+    let startPoint: { x: number; y: number; price: number; time: string } | null = null
+    let isDrawing = false
+
+    // Convert pixel coords to chart coords
+    function pixelToChartCoords(px: number, py: number) {
+      const timeCoord = chart!.timeScale().coordinateToTime(px)
+      // Get the main series (first one)
+      const allSeries = (chart as any)._private__seriesMap
+      let price = 0
+      try {
+        // Use chart's built-in coordinate to price conversion
+        const priceScale = chart!.priceScale('right')
+        // Approximate price from y coordinate using visible range
+        const lo = chart!.timeScale().getVisibleLogicalRange()
+        if (lo) {
+          // Get visible price range from the chart container height
+          const chartHeight = canvas!.height
+          const topPrice = (chart as any)?.priceScale?.('right')
+          // Fallback: use the candle data to approximate
+          const visRange = chart!.timeScale().getVisibleRange()
+          if (visRange && visibleCandles.length > 0) {
+            const visibleData = visibleCandles.filter(c => {
+              return c.date >= (visRange.from as string) && c.date <= (visRange.to as string)
+            })
+            if (visibleData.length > 0) {
+              const maxP = Math.max(...visibleData.map(c => c.high))
+              const minP = Math.min(...visibleData.map(c => c.low))
+              const pRange = maxP - minP
+              const margin = pRange * 0.05
+              price = maxP + margin - ((py / chartHeight) * (pRange + margin * 2))
+            }
+          }
+        }
+      } catch { /* fallback */ }
+
+      return {
+        time: timeCoord ? String(timeCoord) : '',
+        price: Math.round(price * 100) / 100,
+        x: px,
+        y: py,
+      }
+    }
+
+    // Render all stored drawings + current live preview
+    function renderDrawings(liveEnd?: { x: number; y: number }) {
+      if (!ctx || !canvas) return
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      const drawings = drawingManager.getAll()
+      for (const d of drawings) {
+        renderSingleDrawing(ctx, d, canvas!)
+      }
+
+      // Live preview while drawing
+      if (isDrawing && startPoint && liveEnd) {
+        const style = DEFAULT_STYLES[activeDrawingTool!]
+        ctx.save()
+        ctx.strokeStyle = style.color
+        ctx.lineWidth = style.lineWidth
+        ctx.setLineDash(style.lineStyle === 'dashed' ? [6, 4] : style.lineStyle === 'dotted' ? [2, 2] : [])
+        ctx.globalAlpha = 0.7
+
+        switch (activeDrawingTool) {
+          case 'trendline':
+          case 'ray':
+          case 'arrow':
+          case 'measureTool':
+            ctx.beginPath()
+            ctx.moveTo(startPoint.x, startPoint.y)
+            ctx.lineTo(liveEnd.x, liveEnd.y)
+            ctx.stroke()
+            if (activeDrawingTool === 'arrow') {
+              drawArrowHead(ctx, startPoint.x, startPoint.y, liveEnd.x, liveEnd.y, 10)
+            }
+            break
+          case 'horizontalLine':
+            ctx.beginPath()
+            ctx.moveTo(0, startPoint.y)
+            ctx.lineTo(canvas!.width, startPoint.y)
+            ctx.stroke()
+            // Price label
+            ctx.fillStyle = style.color
+            ctx.font = '10px JetBrains Mono, monospace'
+            ctx.fillText(`${startPoint.price.toFixed(2)}`, canvas!.width - 80, startPoint.y - 4)
+            break
+          case 'verticalLine':
+            ctx.beginPath()
+            ctx.moveTo(startPoint.x, 0)
+            ctx.lineTo(startPoint.x, canvas!.height)
+            ctx.stroke()
+            break
+          case 'rectangle':
+          case 'priceRange':
+            const w = liveEnd.x - startPoint.x
+            const h = liveEnd.y - startPoint.y
+            if (style.fillColor) {
+              ctx.fillStyle = style.fillColor
+              ctx.globalAlpha = style.fillOpacity || 0.1
+              ctx.fillRect(startPoint.x, startPoint.y, w, h)
+              ctx.globalAlpha = 0.7
+            }
+            ctx.strokeRect(startPoint.x, startPoint.y, w, h)
+            break
+          case 'ellipse':
+            const cx = (startPoint.x + liveEnd.x) / 2
+            const cy = (startPoint.y + liveEnd.y) / 2
+            const rx = Math.abs(liveEnd.x - startPoint.x) / 2
+            const ry = Math.abs(liveEnd.y - startPoint.y) / 2
+            ctx.beginPath()
+            ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2)
+            if (style.fillColor) {
+              ctx.fillStyle = style.fillColor
+              ctx.globalAlpha = style.fillOpacity || 0.1
+              ctx.fill()
+              ctx.globalAlpha = 0.7
+            }
+            ctx.stroke()
+            break
+          case 'fibRetracement':
+            drawFibPreview(ctx, startPoint, liveEnd, canvas!)
+            break
+          case 'parallelChannel':
+          case 'pitchfork':
+            ctx.beginPath()
+            ctx.moveTo(startPoint.x, startPoint.y)
+            ctx.lineTo(liveEnd.x, liveEnd.y)
+            ctx.stroke()
+            // Show parallel line hint
+            ctx.setLineDash([4, 4])
+            ctx.beginPath()
+            ctx.moveTo(startPoint.x, startPoint.y + 30)
+            ctx.lineTo(liveEnd.x, liveEnd.y + 30)
+            ctx.stroke()
+            break
+        }
+
+        ctx.restore()
+      }
+    }
+
+    function renderSingleDrawing(ctx: CanvasRenderingContext2D, d: Drawing, canvas: HTMLCanvasElement) {
+      if (d.points.length === 0) return
+      ctx.save()
+      ctx.strokeStyle = d.style.color
+      ctx.lineWidth = d.style.lineWidth
+      ctx.setLineDash(d.style.lineStyle === 'dashed' ? [6, 4] : d.style.lineStyle === 'dotted' ? [2, 2] : [])
+
+      // Convert stored price/time to pixel coordinates (approximate)
+      const pts = d.points.map(p => {
+        // For stored drawings, we use approximate pixel positions stored as price/time
+        // This is a simplified approach — in production you'd convert back via chart API
+        return { x: parseFloat(p.time), y: p.price }
+      })
+
+      switch (d.type) {
+        case 'trendline':
+        case 'ray':
+          if (pts.length >= 2) {
+            ctx.beginPath()
+            ctx.moveTo(pts[0].x, pts[0].y)
+            ctx.lineTo(pts[1].x, pts[1].y)
+            ctx.stroke()
+          }
+          break
+        case 'horizontalLine':
+          ctx.beginPath()
+          ctx.moveTo(0, pts[0].y)
+          ctx.lineTo(canvas.width, pts[0].y)
+          ctx.stroke()
+          if (d.style.showLabel) {
+            ctx.fillStyle = d.style.color
+            ctx.font = '10px JetBrains Mono, monospace'
+            ctx.fillText(`H-Line`, canvas.width - 80, pts[0].y - 4)
+          }
+          break
+        case 'verticalLine':
+          ctx.beginPath()
+          ctx.moveTo(pts[0].x, 0)
+          ctx.lineTo(pts[0].x, canvas.height)
+          ctx.stroke()
+          break
+        case 'rectangle':
+        case 'priceRange':
+          if (pts.length >= 2) {
+            const w = pts[1].x - pts[0].x
+            const h = pts[1].y - pts[0].y
+            if (d.style.fillColor) {
+              ctx.fillStyle = d.style.fillColor
+              ctx.globalAlpha = d.style.fillOpacity || 0.1
+              ctx.fillRect(pts[0].x, pts[0].y, w, h)
+              ctx.globalAlpha = 1
+            }
+            ctx.strokeRect(pts[0].x, pts[0].y, w, h)
+          }
+          break
+        case 'ellipse':
+          if (pts.length >= 2) {
+            const cx = (pts[0].x + pts[1].x) / 2
+            const cy = (pts[0].y + pts[1].y) / 2
+            const rx = Math.abs(pts[1].x - pts[0].x) / 2
+            const ry = Math.abs(pts[1].y - pts[0].y) / 2
+            ctx.beginPath()
+            ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2)
+            if (d.style.fillColor) {
+              ctx.fillStyle = d.style.fillColor
+              ctx.globalAlpha = d.style.fillOpacity || 0.1
+              ctx.fill()
+              ctx.globalAlpha = 1
+            }
+            ctx.stroke()
+          }
+          break
+        case 'arrow':
+          if (pts.length >= 2) {
+            ctx.beginPath()
+            ctx.moveTo(pts[0].x, pts[0].y)
+            ctx.lineTo(pts[1].x, pts[1].y)
+            ctx.stroke()
+            drawArrowHead(ctx, pts[0].x, pts[0].y, pts[1].x, pts[1].y, 10)
+          }
+          break
+        case 'fibRetracement':
+          if (pts.length >= 2) {
+            drawFibStored(ctx, pts[0], pts[1], canvas, d.style.color)
+          }
+          break
+      }
+      ctx.restore()
+    }
+
+    // Mouse handlers
+    function onMouseDown(e: MouseEvent) {
+      const rect = canvas!.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      const coords = pixelToChartCoords(x, y)
+
+      startPoint = { x, y, price: coords.price, time: coords.time }
+      isDrawing = true
+
+      // Single-click tools (horizontal line, vertical line, text)
+      if (toolMeta!.pointsRequired === 1) {
+        const style = DEFAULT_STYLES[activeDrawingTool!]
+        drawingManager.add({
+          type: activeDrawingTool!,
+          // Store pixel coordinates as time/price for rendering
+          points: [{ time: String(x), price: y }],
+          style: { ...style },
+          locked: false,
+          visible: true,
+        })
+        isDrawing = false
+        startPoint = null
+        renderDrawings()
+      }
+    }
+
+    function onMouseMove(e: MouseEvent) {
+      if (!isDrawing || !startPoint) return
+      const rect = canvas!.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      renderDrawings({ x, y })
+    }
+
+    function onMouseUp(e: MouseEvent) {
+      if (!isDrawing || !startPoint) return
+      const rect = canvas!.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+
+      // Only save if we moved enough (avoid accidental tiny drawings)
+      const dx = x - startPoint.x
+      const dy = y - startPoint.y
+      if (Math.sqrt(dx * dx + dy * dy) > 5) {
+        const style = DEFAULT_STYLES[activeDrawingTool!]
+        drawingManager.add({
+          type: activeDrawingTool!,
+          points: [
+            { time: String(startPoint.x), price: startPoint.y },
+            { time: String(x), price: y },
+          ],
+          style: { ...style },
+          locked: false,
+          visible: true,
+        })
+      }
+
+      isDrawing = false
+      startPoint = null
+      renderDrawings()
+    }
+
+    canvas.addEventListener('mousedown', onMouseDown)
+    canvas.addEventListener('mousemove', onMouseMove)
+    canvas.addEventListener('mouseup', onMouseUp)
+
+    // Initial render of stored drawings
+    renderDrawings()
+
+    // Re-render when drawings change
+    const unsub = drawingManager.subscribe(() => renderDrawings())
+
+    return () => {
+      canvas.removeEventListener('mousedown', onMouseDown)
+      canvas.removeEventListener('mousemove', onMouseMove)
+      canvas.removeEventListener('mouseup', onMouseUp)
+      unsub()
+    }
+  }, [activeDrawingTool, drawingManager, visibleCandles])
 
   // Search
   async function handleSearch(q: string) {
