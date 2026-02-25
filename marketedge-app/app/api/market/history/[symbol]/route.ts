@@ -37,10 +37,34 @@ export async function GET(
             return NextResponse.json({ error: 'Symbol is required' }, { status: 400 })
         }
 
+        // ─── Index Symbol Mapping ───
+        // Map common display names to Yahoo Finance symbols
+        const INDEX_MAP: Record<string, string> = {
+            'NIFTY': '^NSEI',
+            'NIFTY 50': '^NSEI',
+            'NIFTY50': '^NSEI',
+            'BANKNIFTY': '^NSEBANK',
+            'BANK NIFTY': '^NSEBANK',
+            'SENSEX': '^BSESN',
+            'BSE SENSEX': '^BSESN',
+            'NIFTYIT': '^CNXIT',
+            'NIFTY IT': '^CNXIT',
+            'NIFTYNEXT50': '^NSMIDCP50',
+            'NIFTY NEXT 50': '^NSMIDCP50',
+            'NIFTYBANK': '^NSEBANK',
+            'NIFTY BANK': '^NSEBANK',
+            'NIFTYMIDCAP': '^NSEMDCP50',
+            'NIFTY MIDCAP': '^NSEMDCP50',
+        }
+
         let ySymbol = symbol.toUpperCase()
         let isIndex = false
 
-        if (ySymbol.startsWith('^')) {
+        // Check if it's a known index name
+        if (INDEX_MAP[ySymbol]) {
+            ySymbol = INDEX_MAP[ySymbol]
+            isIndex = true
+        } else if (ySymbol.startsWith('^')) {
             isIndex = true
         } else if (ySymbol.includes('.')) {
             // Already has an exchange suffix, try it directly

@@ -37,10 +37,28 @@ export async function GET(
             return NextResponse.json({ error: 'Symbol is required' }, { status: 400 })
         }
 
+        // ─── Index Symbol Mapping ───
+        const INDEX_MAP: Record<string, string> = {
+            'NIFTY': '^NSEI',
+            'NIFTY 50': '^NSEI',
+            'NIFTY50': '^NSEI',
+            'BANKNIFTY': '^NSEBANK',
+            'BANK NIFTY': '^NSEBANK',
+            'SENSEX': '^BSESN',
+            'BSE SENSEX': '^BSESN',
+            'NIFTYIT': '^CNXIT',
+            'NIFTY IT': '^CNXIT',
+            'NIFTYBANK': '^NSEBANK',
+            'NIFTY BANK': '^NSEBANK',
+        }
+
         let ySymbol = symbol.toUpperCase()
         let isIndex = false
 
-        if (ySymbol.startsWith('^')) {
+        if (INDEX_MAP[ySymbol]) {
+            ySymbol = INDEX_MAP[ySymbol]
+            isIndex = true
+        } else if (ySymbol.startsWith('^')) {
             isIndex = true
         } else if (ySymbol.includes('.')) {
             // Already has an exchange suffix
