@@ -594,51 +594,92 @@ function ChartPanel({
         transition: 'border-color .2s',
       }}
     >
-      {/* Mini search + symbol header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 8px', background: t.bgCard, borderBottom: `1px solid ${t.border}30` }}>
-        <div style={{ position: 'relative', width: '140px' }} ref={searchRef}>
+      {/* ─── Panel Header: Search + Symbol + Price ─── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 10px', background: t.bgCard, borderBottom: `1px solid ${t.border}40` }}>
+
+        {/* Search Box */}
+        <div style={{ position: 'relative', minWidth: '220px', flexShrink: 0 }} ref={searchRef}>
           <input
             value={search}
             onChange={e => handleSearch(e.target.value.toUpperCase())}
             onFocus={() => search.length >= 1 && setShowSearch(true)}
-            placeholder={`🔍 ${symbol}`}
-            style={{ width: '100%', background: t.bgInput, border: `1px solid ${t.border}`, borderRadius: '5px', padding: '3px 8px', color: t.text, fontSize: '10px', ...mono, outline: 'none' }}
+            placeholder={`🔍 Search symbol...`}
+            style={{
+              width: '100%',
+              background: t.bgInput,
+              border: `1px solid ${t.border}`,
+              borderRadius: '6px',
+              padding: '6px 12px',
+              color: t.text,
+              fontSize: '12px',
+              ...mono,
+              outline: 'none',
+            }}
           />
           {showSearch && searchResults.length > 0 && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 50, background: t.bgCard, border: `1px solid ${t.accent}`, borderRadius: '0 0 6px 6px', maxHeight: '300px', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,.6)', minWidth: '260px', width: 'max-content' }}>
-              {searchResults.map(s => (
-                <div key={s.symbol} onClick={() => { onSymbolChange(s.symbol); setSearch(''); setShowSearch(false) }}
-                  style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: `1px solid ${t.border}30`, display: 'flex', flexDirection: 'column', gap: '2px' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = `${t.border}50`)}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 800, color: t.text, fontSize: '13px', letterSpacing: '0.5px' }}>{s.symbol}</span>
-                    {s.exchange && <span style={{ fontSize: '9px', fontWeight: 600, color: t.textMuted, background: t.bgInput, padding: '2px 4px', borderRadius: '3px' }}>{s.exchange}</span>}
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 2px)', left: 0,
+              zIndex: 999,
+              background: t.bgCard,
+              border: `1px solid ${t.accent}`,
+              borderRadius: '8px',
+              maxHeight: '320px',
+              overflowY: 'auto',
+              boxShadow: '0 12px 40px rgba(0,0,0,.7)',
+              minWidth: '320px',
+              width: 'max-content',
+            }}>
+              {searchResults.map((s, idx) => (
+                <div
+                  key={s.symbol}
+                  onClick={() => { onSymbolChange(s.symbol); setSearch(''); setShowSearch(false) }}
+                  style={{
+                    padding: '10px 14px',
+                    cursor: 'pointer',
+                    borderBottom: idx < searchResults.length - 1 ? `1px solid ${t.border}25` : 'none',
+                    display: 'flex', flexDirection: 'column', gap: '3px',
+                    transition: 'background .15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = `${t.accent}15`)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontWeight: 800, color: t.text, fontSize: '13px', letterSpacing: '0.5px', ...mono }}>{s.symbol}</span>
+                    {s.exchange && <span style={{ fontSize: '9px', fontWeight: 600, color: t.textMuted, background: t.bgInput, padding: '2px 6px', borderRadius: '4px' }}>{s.exchange}</span>}
                   </div>
-                  <span style={{ color: t.textDim, fontSize: '10px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>
+                  <span style={{ color: t.textDim, fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '280px' }}>{s.name}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Quick symbols (only in single layout) */}
-        <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', flex: 1 }}>
+        {/* Current Symbol Badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontWeight: 800, fontSize: '14px', color: t.accent, ...mono }}>{symbol}</span>
+          <span style={{ fontSize: '10px', color: t.textDim, maxWidth: '120px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{stockName}</span>
+        </div>
+
+        {/* Quick Symbols */}
+        <div style={{ display: 'flex', gap: '3px', marginLeft: '4px' }}>
           {QUICK_SYMBOLS.slice(0, 6).map(s => (
             <div key={s} onClick={() => onSymbolChange(s)} style={{
-              padding: '2px 5px', borderRadius: '3px', fontSize: '8px', fontWeight: 600,
-              cursor: 'pointer', ...mono,
-              background: symbol === s ? t.accent : 'transparent',
+              padding: '3px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: 700,
+              cursor: 'pointer', ...mono, transition: 'all .15s',
+              background: symbol === s ? t.accent : `${t.border}30`,
               color: symbol === s ? '#fff' : t.textDim,
             }}>{s}</div>
           ))}
         </div>
 
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
         {/* Price */}
         {lastCandle && (
-          <div style={{ textAlign: 'right', ...mono }}>
-            <span style={{ fontSize: '13px', fontWeight: 800, color: t.text }}>₹{lastCandle.close.toLocaleString('en-IN')}</span>
-            <span style={{ fontSize: '10px', fontWeight: 700, color: priceChange >= 0 ? t.green : t.red, marginLeft: '6px' }}>
+          <div style={{ textAlign: 'right', ...mono, flexShrink: 0 }}>
+            <span style={{ fontSize: '14px', fontWeight: 800, color: t.text }}>₹{lastCandle.close.toLocaleString('en-IN')}</span>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: priceChange >= 0 ? t.green : t.red, marginLeft: '8px' }}>
               {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)} ({priceChangePct >= 0 ? '+' : ''}{priceChangePct.toFixed(2)}%)
             </span>
           </div>
