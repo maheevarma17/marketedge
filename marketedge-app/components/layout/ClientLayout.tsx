@@ -24,7 +24,7 @@ function ThemedLayout({ children }: { children: React.ReactNode }) {
             }} />
 
             <Navbar />
-            <div style={{ display: 'flex', marginTop: '54px', position: 'relative', zIndex: 1 }}>
+            <div style={{ display: 'flex', marginTop: '54px' }}>
                 <Sidebar />
                 <main style={{ marginLeft: '52px', flex: 1, minHeight: 'calc(100vh - 54px)', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ flex: 1 }}>
