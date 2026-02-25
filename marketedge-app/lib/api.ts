@@ -21,6 +21,7 @@ export interface StockQuote {
 export interface StockSearchResult {
     symbol: string
     name: string
+    exchange?: string
 }
 
 // Fetch real-time quote for a stock

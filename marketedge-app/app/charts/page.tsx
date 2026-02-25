@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { searchStocks, type StockSearchResult } from '@/lib/api'
 import { useTheme } from '@/lib/theme'
@@ -26,6 +26,10 @@ import {
 } from '@/lib/chart-layouts'
 import ChartToolbar from '@/components/charts/ChartToolbar'
 import ChartDataPanel from '@/components/charts/ChartDataPanel'
+import IndicatorSettingsModal from '@/components/charts/IndicatorSettingsModal'
+import LeftDrawingToolbar from '@/components/charts/LeftDrawingToolbar'
+import RightWatchlistPanel from '@/components/charts/RightWatchlistPanel'
+import ReplayToolbar from '@/components/charts/ReplayToolbar'
 import {
   createChart,
   CandlestickSeries,
@@ -80,12 +84,19 @@ interface ChartPanelProps {
   onSymbolChange: (symbol: string) => void
   drawingManager: DrawingManager
   activeDrawingTool: DrawingToolType | null
+  onConfigureIndicator: (indicator: ActiveIndicator) => void
+  onToggleVisibility: (indicator: ActiveIndicator) => void
+  onRemoveIndicator: (indicator: ActiveIndicator) => void
+  isReplayMode: boolean
+  replayOffset: number
 }
 
 function ChartPanel({
   panelIndex, symbol, range, interval, chartType,
   activeIndicators, showVolume, isActive, onActivate,
   onSymbolChange, drawingManager, activeDrawingTool,
+  onConfigureIndicator, onToggleVisibility, onRemoveIndicator,
+  isReplayMode, replayOffset
 }: ChartPanelProps) {
   const { t } = useTheme()
   const [candles, setCandles] = useState<CandleData[]>([])
@@ -135,9 +146,14 @@ function ChartPanel({
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  const visibleCandles = useMemo(() => {
+    if (!isReplayMode) return candles
+    return candles.slice(0, Math.max(1, candles.length - replayOffset))
+  }, [candles, isReplayMode, replayOffset])
+
   // Build chart
   useEffect(() => {
-    if (!chartContainerRef.current || candles.length === 0) return
+    if (!chartContainerRef.current || visibleCandles.length === 0) return
 
     if (chartRef.current) {
       chartRef.current.remove()
@@ -171,15 +187,15 @@ function ChartPanel({
         borderColor: t.border,
         timeVisible: ['1m', '5m', '15m', '30m', '1h'].includes(interval),
         rightOffset: 5,
-        barSpacing: candles.length > 500 ? 3 : candles.length > 200 ? 5 : 8,
+        barSpacing: visibleCandles.length > 500 ? 3 : visibleCandles.length > 200 ? 5 : 8,
       },
     })
     chartRef.current = chart
 
     // Prepare chart data based on type
-    let displayCandles = candles
+    let displayCandles = visibleCandles
     if (chartType === 'heikinAshi') {
-      displayCandles = toHeikinAshi(candles)
+      displayCandles = toHeikinAshi(visibleCandles)
     }
 
     const chartData = displayCandles.map(c => ({
@@ -189,8 +205,8 @@ function ChartPanel({
       low: c.low,
       close: c.close,
     }))
-    const closes = candles.map(c => c.close)
-    const ohlcvCandles: OHLCVCandle[] = candles.map(c => ({
+    const closes = visibleCandles.map(c => c.close)
+    const ohlcvCandles: OHLCVCandle[] = visibleCandles.map(c => ({
       date: c.date,
       open: c.open,
       high: c.high,
@@ -492,7 +508,7 @@ function ChartPanel({
           }
           case 'trix': {
             const vals = trix(closes, ai.params.period || 15)
-            const lineData = candles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
+            const lineData = visibleCandles.map((c, i) => ({ time: c.date as string, value: vals[i] as number })).filter(d => d.value !== null)
             chart.addSeries(LineSeries, { color: ai.color, lineWidth: 1, title: 'TRIX', priceScaleId: paneId }).setData(lineData)
             chart.priceScale(paneId).applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } })
             break
@@ -510,7 +526,7 @@ function ChartPanel({
         priceScaleId: 'vol',
       })
       chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } })
-      volSeries.setData(candles.map(c => ({
+      volSeries.setData(visibleCandles.map(c => ({
         time: c.date as string,
         value: c.volume,
         color: c.close >= c.open ? t.green + '30' : t.red + '30',
@@ -525,8 +541,8 @@ function ChartPanel({
         setCrosshairData(null)
         return
       }
-      const idx = candles.findIndex(c => c.date === param.time)
-      if (idx >= 0) setCrosshairData(candles[idx])
+      const idx = visibleCandles.findIndex(c => c.date === param.time)
+      if (idx >= 0) setCrosshairData(visibleCandles[idx])
     })
 
     // ─── Resize ───
@@ -545,7 +561,7 @@ function ChartPanel({
       chart.remove()
       chartRef.current = null
     }
-  }, [candles, chartType, activeIndicators, showVolume, t, interval])
+  }, [visibleCandles, chartType, activeIndicators, showVolume, t, interval])
 
   // Search
   async function handleSearch(q: string) {
@@ -557,9 +573,9 @@ function ChartPanel({
     } else { setSearchResults([]); setShowSearch(false) }
   }
 
-  const lastCandle = candles.length > 0 ? candles[candles.length - 1] : null
+  const lastCandle = visibleCandles.length > 0 ? visibleCandles[visibleCandles.length - 1] : null
   const displayCandle = crosshairData || lastCandle
-  const prevCandle = candles.length > 1 ? candles[candles.length - 2] : null
+  const prevCandle = visibleCandles.length > 1 ? visibleCandles[visibleCandles.length - 2] : null
   const priceChange = lastCandle && prevCandle ? lastCandle.close - prevCandle.close : 0
   const priceChangePct = prevCandle ? (priceChange / prevCandle.close) * 100 : 0
 
@@ -589,14 +605,17 @@ function ChartPanel({
             style={{ width: '100%', background: t.bgInput, border: `1px solid ${t.border}`, borderRadius: '5px', padding: '3px 8px', color: t.text, fontSize: '10px', ...mono, outline: 'none' }}
           />
           {showSearch && searchResults.length > 0 && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: t.bgCard, border: `1px solid ${t.accent}`, borderRadius: '0 0 6px 6px', maxHeight: '160px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,.5)' }}>
+            <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 50, background: t.bgCard, border: `1px solid ${t.accent}`, borderRadius: '0 0 6px 6px', maxHeight: '300px', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,.6)', minWidth: '260px', width: 'max-content' }}>
               {searchResults.map(s => (
                 <div key={s.symbol} onClick={() => { onSymbolChange(s.symbol); setSearch(''); setShowSearch(false) }}
-                  style={{ padding: '4px 8px', cursor: 'pointer', borderBottom: `1px solid ${t.border}30`, fontSize: '10px' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = t.border)}
+                  style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: `1px solid ${t.border}30`, display: 'flex', flexDirection: 'column', gap: '2px' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = `${t.border}50`)}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                  <span style={{ fontWeight: 700, color: t.text }}>{s.symbol}</span>
-                  <span style={{ color: t.textDim, marginLeft: '4px', fontSize: '9px' }}>{s.name}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 800, color: t.text, fontSize: '13px', letterSpacing: '0.5px' }}>{s.symbol}</span>
+                    {s.exchange && <span style={{ fontSize: '9px', fontWeight: 600, color: t.textMuted, background: t.bgInput, padding: '2px 4px', borderRadius: '3px' }}>{s.exchange}</span>}
+                  </div>
+                  <span style={{ color: t.textDim, fontSize: '10px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>
                 </div>
               ))}
             </div>
@@ -633,10 +652,13 @@ function ChartPanel({
         ohlcv={displayCandle}
         priceChange={priceChange}
         priceChangePct={priceChangePct}
-        indicatorValues={activeIndicators.filter(ai => ai.visible).map(ai => {
+        indicatorValues={activeIndicators.map(ai => {
           const meta = INDICATOR_LIST.find(m => m.id === ai.id)
-          return { name: meta?.shortName || ai.id, value: '—', color: ai.color }
+          return { name: meta?.shortName || ai.id, value: '—', color: ai.color, indicator: ai }
         })}
+        onConfigureIndicator={onConfigureIndicator}
+        onToggleVisibility={onToggleVisibility}
+        onRemoveIndicator={onRemoveIndicator}
       />
 
       {/* Chart */}
@@ -686,9 +708,30 @@ export default function ChartsPage() {
     { id: 'sma', params: { period: 20 }, color: '#f0b429', visible: true },
   ])
   const [activeDrawingTool, setActiveDrawingTool] = useState<DrawingToolType | null>(null)
+  const [configuringIndicator, setConfiguringIndicator] = useState<ActiveIndicator | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [drawingManager] = useState(() => new DrawingManager('main'))
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Replay State
+  const [isReplayMode, setIsReplayMode] = useState(false)
+  const [replayOffset, setReplayOffset] = useState(50)
+  const [isReplaying, setIsReplaying] = useState(false)
+  const [replaySpeed, setReplaySpeed] = useState(1000)
+
+  useEffect(() => {
+    if (!isReplaying) return
+    const id = window.setInterval(() => {
+      setReplayOffset(prev => {
+        if (prev <= 0) {
+          setIsReplaying(false)
+          return 0
+        }
+        return prev - 1
+      })
+    }, replaySpeed)
+    return () => window.clearInterval(id)
+  }, [isReplaying, replaySpeed])
 
   // Layout config
   const layoutConfig = LAYOUT_CONFIGS[layoutType]
@@ -717,7 +760,7 @@ export default function ChartsPage() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [drawingManager])
 
-  // Toggle indicator
+  // Toggle indicator (Add new one via toolbar)
   function handleToggleIndicator(indicator: IndicatorMeta, params?: Record<string, number>) {
     setActiveIndicators(prev => {
       const existingIdx = prev.findIndex(ai => ai.id === indicator.id)
@@ -731,6 +774,24 @@ export default function ChartsPage() {
         visible: true,
       }]
     })
+  }
+
+  // Edit indicator functions
+  function handleConfigureIndicator(indicator: ActiveIndicator) {
+    setConfiguringIndicator(indicator)
+  }
+
+  function handleSaveIndicatorSettings(updated: ActiveIndicator) {
+    setActiveIndicators(prev => prev.map(ai => ai.id === updated.id ? updated : ai))
+    setConfiguringIndicator(null)
+  }
+
+  function handleToggleVisibility(indicator: ActiveIndicator) {
+    setActiveIndicators(prev => prev.map(ai => ai.id === indicator.id ? { ...ai, visible: !ai.visible } : ai))
+  }
+
+  function handleRemoveIndicator(indicator: ActiveIndicator) {
+    setActiveIndicators(prev => prev.filter(ai => ai.id !== indicator.id))
   }
 
   // Apply template
@@ -763,19 +824,24 @@ export default function ChartsPage() {
     }
   }
 
-  // Fullscreen
+  // Fullscreen (CSS-based to prevent canvas event swallowing)
   function handleFullscreen() {
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen()
-      setIsFullscreen(true)
-    } else {
-      document.exitFullscreen()
-      setIsFullscreen(false)
-    }
+    setIsFullscreen(!isFullscreen)
+  }
+
+  const fullscreenStyles: React.CSSProperties = isFullscreen ? {
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    zIndex: 9999,
+    background: t.bg,
+    padding: '8px 12px',
+    display: 'flex', flexDirection: 'column'
+  } : {
+    padding: '8px 12px', height: 'calc(100vh - 60px)', display: 'flex', flexDirection: 'column', background: t.bg
   }
 
   return (
-    <div ref={containerRef} style={{ padding: '8px 12px', height: 'calc(100vh - 60px)', display: 'flex', flexDirection: 'column', background: t.bg }}>
+    <div ref={containerRef} style={fullscreenStyles}>
 
       {/* Professional Toolbar */}
       <ChartToolbar
@@ -797,34 +863,59 @@ export default function ChartsPage() {
         onScreenshot={handleScreenshot}
         onFullscreen={handleFullscreen}
         isFullscreen={isFullscreen}
+        isReplayMode={isReplayMode}
+        onToggleReplay={() => setIsReplayMode(!isReplayMode)}
       />
 
-      {/* Chart Grid */}
-      <div style={{
-        flex: 1,
-        display: 'grid',
-        gridTemplateColumns: `repeat(${layoutConfig.cols}, 1fr)`,
-        gridTemplateRows: `repeat(${layoutConfig.rows}, 1fr)`,
-        gap: '4px',
-        marginTop: '4px',
-      }}>
-        {Array.from({ length: numPanels }).map((_, i) => (
-          <ChartPanel
-            key={`panel-${i}-${panelSymbols[i] || 'RELIANCE'}-${layoutType}`}
-            panelIndex={i}
-            symbol={panelSymbols[i] || 'RELIANCE'}
-            range={range}
-            interval={interval}
-            chartType={chartType}
-            activeIndicators={activeIndicators}
-            showVolume={showVolume}
-            isActive={activePanel === i}
-            onActivate={() => setActivePanel(i)}
-            onSymbolChange={(sym) => handlePanelSymbolChange(i, sym)}
-            drawingManager={drawingManager}
-            activeDrawingTool={activeDrawingTool}
-          />
-        ))}
+      {/* 3-Pane Layout */}
+      <div style={{ flex: 1, display: 'flex', marginTop: '4px', overflow: 'hidden' }}>
+
+        {/* Left Drawing Toolbar */}
+        <LeftDrawingToolbar
+          activeTool={activeDrawingTool}
+          onSelectTool={setActiveDrawingTool}
+          onUndo={() => drawingManager.undoLast()}
+          onClearAll={() => drawingManager.clearAll()}
+        />
+
+        {/* Center Chart Grid */}
+        <div style={{
+          flex: 1,
+          display: 'grid',
+          gridTemplateColumns: `repeat(${layoutConfig.cols}, 1fr)`,
+          gridTemplateRows: `repeat(${layoutConfig.rows}, 1fr)`,
+          gap: '4px',
+          padding: '0 4px',
+        }}>
+          {Array.from({ length: numPanels }).map((_, i) => (
+            <ChartPanel
+              key={`panel-${i}-${panelSymbols[i] || 'RELIANCE'}-${layoutType}`}
+              panelIndex={i}
+              symbol={panelSymbols[i] || 'RELIANCE'}
+              range={range}
+              interval={interval}
+              chartType={chartType}
+              activeIndicators={activeIndicators}
+              showVolume={showVolume}
+              isActive={activePanel === i}
+              onActivate={() => setActivePanel(i)}
+              onSymbolChange={(sym) => handlePanelSymbolChange(i, sym)}
+              drawingManager={drawingManager}
+              activeDrawingTool={activeDrawingTool}
+              onConfigureIndicator={handleConfigureIndicator}
+              onToggleVisibility={handleToggleVisibility}
+              onRemoveIndicator={handleRemoveIndicator}
+              isReplayMode={isReplayMode}
+              replayOffset={replayOffset}
+            />
+          ))}
+        </div>
+
+        {/* Right Watchlist Panel */}
+        <RightWatchlistPanel
+          currentSymbol={panelSymbols[activePanel] || 'RELIANCE'}
+          onSymbolSelect={(sym) => handlePanelSymbolChange(activePanel, sym)}
+        />
       </div>
 
       {/* Footer */}
@@ -833,12 +924,38 @@ export default function ChartsPage() {
         <span>Data: Yahoo Finance · 100% Free & Open Source · No limits</span>
       </div>
 
-      <style>{`
+      {/* Indicator Settings Modal */}
+      {configuringIndicator && (
+        <IndicatorSettingsModal
+          indicator={configuringIndicator}
+          onSave={handleSaveIndicatorSettings}
+          onClose={() => setConfiguringIndicator(null)}
+        />
+      )}
+
+      {/* Replay Toolbar */}
+      {isReplayMode && (
+        <ReplayToolbar
+          isPlaying={isReplaying}
+          speed={replaySpeed}
+          onPlayPause={() => setIsReplaying(!isReplaying)}
+          onStepForward={() => setReplayOffset(prev => Math.max(0, prev - 1))}
+          onSpeedChange={setReplaySpeed}
+          onClose={() => {
+            setIsReplaying(false)
+            setIsReplayMode(false)
+            setReplayOffset(50)
+          }}
+        />
+      )}
+
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes meChartPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
         .me-chart a[href*="tradingview"] { display: none !important; }
         .me-chart a[target="_blank"] { display: none !important; }
         .me-chart div[style*="bottom"] > a { display: none !important; }
-      `}</style>
+      `}} />
     </div>
   )
 }

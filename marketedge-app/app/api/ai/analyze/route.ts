@@ -1,16 +1,35 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { getUserFromRequest } from '@/lib/auth'
+import { aiAnalyzeSchema, validateBody } from '@/lib/validations'
+import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit'
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
     try {
-        const { message } = await request.json()
-
-        if (!message) {
-            return NextResponse.json({ error: 'Message is required' }, { status: 400 })
+        // Require authentication
+        const auth = getUserFromRequest(req)
+        if (!auth) {
+            return NextResponse.json({ error: 'Please log in to use AI Assistant' }, { status: 401 })
         }
 
-        // Use Groq API (free) — same as the user's existing backend
-        const GROQ_API_KEY = process.env.GROQ_API_KEY
+        // Rate limit per user
+        const rateCheck = checkRateLimit(`ai:${auth.userId}`, RATE_LIMITS.ai)
+        if (!rateCheck.success) {
+            return NextResponse.json(
+                { error: `AI rate limit reached. Try again in ${rateCheck.retryAfterSeconds}s` },
+                { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfterSeconds) } }
+            )
+        }
 
+        // Validate & sanitize input
+        const body = await req.json()
+        const validation = validateBody(aiAnalyzeSchema, body)
+        if (!validation.success) {
+            return NextResponse.json({ error: validation.error }, { status: 400 })
+        }
+        const { message } = validation.data
+
+        // Use Groq API
+        const GROQ_API_KEY = process.env.GROQ_API_KEY
         if (!GROQ_API_KEY) {
             return NextResponse.json({
                 reply: 'AI is not configured. Please add GROQ_API_KEY to your .env.local file.\n\nGet a free key at: https://console.groq.com'

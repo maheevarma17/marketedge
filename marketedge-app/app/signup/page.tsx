@@ -12,6 +12,27 @@ export default function SignupPage() {
   const router = useRouter()
   const { t } = useTheme()
 
+  // Password strength indicator
+  function getStrength(pw: string) {
+    let score = 0
+    if (pw.length >= 8) score++
+    if (pw.length >= 12) score++
+    if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++
+    if (/[0-9]/.test(pw)) score++
+    if (/[^A-Za-z0-9]/.test(pw)) score++
+    const levels = [
+      { label: 'Very Weak', color: '#ef4444' },
+      { label: 'Weak', color: '#f97316' },
+      { label: 'Fair', color: '#eab308' },
+      { label: 'Strong', color: '#22c55e' },
+      { label: 'Very Strong', color: '#10b981' },
+    ]
+    const capped = Math.min(score, 4)
+    return { score: capped, ...levels[capped] }
+  }
+
+  const strength = getStrength(password)
+
   async function handleSignup() {
     if (!name || !email || !password) return
     setLoading(true)
@@ -23,8 +44,8 @@ export default function SignupPage() {
         body: JSON.stringify({ name, email, password })
       })
       const data = await res.json()
-      if (data.token) {
-        localStorage.setItem('token', data.token)
+      if (res.ok && data.name) {
+        // Auth cookies are set automatically by the server (HTTP-only)
         localStorage.setItem('userName', data.name)
         router.push('/')
       } else {
@@ -67,11 +88,30 @@ export default function SignupPage() {
             placeholder="you@example.com" style={inputStyle} />
         </div>
 
-        <div style={{ marginBottom: '22px' }}>
+        <div style={{ marginBottom: '8px' }}>
           <div style={{ fontSize: '10px', fontWeight: 600, color: t.textDim, marginBottom: '5px', letterSpacing: '0.04em' }}>PASSWORD</div>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)}
             placeholder="••••••••" onKeyDown={e => e.key === 'Enter' && handleSignup()} style={inputStyle} />
         </div>
+
+        {/* Password Strength Indicator */}
+        {password.length > 0 && (
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', gap: '3px', marginBottom: '4px' }}>
+              {[0, 1, 2, 3].map(i => (
+                <div key={i} style={{
+                  flex: 1, height: '3px', borderRadius: '2px',
+                  background: i <= strength.score ? strength.color : t.border,
+                  transition: 'background .3s'
+                }} />
+              ))}
+            </div>
+            <div style={{ fontSize: '10px', color: strength.color, fontWeight: 600 }}>{strength.label}</div>
+            <div style={{ fontSize: '9px', color: t.textMuted, marginTop: '2px' }}>
+              8+ chars · uppercase · lowercase · number
+            </div>
+          </div>
+        )}
 
         <button onClick={handleSignup} disabled={loading} style={{
           width: '100%', background: `linear-gradient(135deg, ${t.accent}, #6c63ff)`, border: 'none', borderRadius: '10px',
@@ -83,6 +123,10 @@ export default function SignupPage() {
 
         <p style={{ color: t.textDim, fontSize: '12px', marginTop: '16px', textAlign: 'center' }}>
           Already have an account? <a href="/login" style={{ color: t.accent, textDecoration: 'none', fontWeight: 600 }}>Sign in</a>
+        </p>
+
+        <p style={{ color: t.textMuted, fontSize: '9px', marginTop: '12px', textAlign: 'center' }}>
+          By signing up you agree to our <a href="/terms" style={{ color: t.accent, textDecoration: 'none' }}>Terms</a> and <a href="/privacy" style={{ color: t.accent, textDecoration: 'none' }}>Privacy Policy</a>
         </p>
       </div>
     </div>

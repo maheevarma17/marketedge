@@ -1,5 +1,5 @@
-'use client'
 import { useTheme } from '@/lib/theme'
+import { type ActiveIndicator } from '@/lib/chart-layouts'
 
 interface ChartDataPanelProps {
     symbol: string
@@ -12,12 +12,15 @@ interface ChartDataPanelProps {
         close: number
         volume: number
     } | null
-    indicatorValues: { name: string; value: string; color: string }[]
+    indicatorValues: { name: string; value: string; color: string; indicator: ActiveIndicator }[]
     priceChange: number
     priceChangePct: number
+    onConfigureIndicator?: (indicator: ActiveIndicator) => void
+    onToggleVisibility?: (indicator: ActiveIndicator) => void
+    onRemoveIndicator?: (indicator: ActiveIndicator) => void
 }
 
-export default function ChartDataPanel({ symbol, stockName, ohlcv, indicatorValues, priceChange, priceChangePct }: ChartDataPanelProps) {
+export default function ChartDataPanel({ symbol, stockName, ohlcv, indicatorValues, priceChange, priceChangePct, onConfigureIndicator, onToggleVisibility, onRemoveIndicator }: ChartDataPanelProps) {
     const { t } = useTheme()
     const mono = { fontFamily: 'JetBrains Mono, monospace' }
     const isUp = priceChange >= 0
@@ -36,6 +39,7 @@ export default function ChartDataPanel({ symbol, stockName, ohlcv, indicatorValu
             minHeight: '28px',
             ...mono,
             fontSize: '11px',
+            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 // stick to top inside chart container
         }}>
             {/* Symbol & Name */}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
@@ -68,12 +72,33 @@ export default function ChartDataPanel({ symbol, stockName, ohlcv, indicatorValu
             {indicatorValues.length > 0 && (
                 <>
                     <div style={{ width: '1px', height: '16px', background: t.border }} />
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                         {indicatorValues.map((iv, i) => (
-                            <span key={i} style={{ fontSize: '9px' }}>
-                                <span style={{ color: t.textDim }}>{iv.name}: </span>
-                                <span style={{ color: iv.color, fontWeight: 600 }}>{iv.value}</span>
-                            </span>
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '9px' }}>
+                                    <span style={{ color: t.textDim }}>{iv.name}: </span>
+                                    <span style={{ color: iv.color, fontWeight: 600 }}>{iv.value}</span>
+                                </span>
+
+                                {/* TradingView-style Hover Controls */}
+                                <div style={{ display: 'flex', gap: '4px', opacity: 0.6 }}>
+                                    {onToggleVisibility && (
+                                        <div onClick={(e) => { e.stopPropagation(); onToggleVisibility(iv.indicator) }} style={{ cursor: 'pointer', fontSize: '10px' }} title={iv.indicator.visible ? "Hide" : "Show"}>
+                                            {iv.indicator.visible ? '👁️' : '🙈'}
+                                        </div>
+                                    )}
+                                    {onConfigureIndicator && (
+                                        <div onClick={(e) => { e.stopPropagation(); onConfigureIndicator(iv.indicator) }} style={{ cursor: 'pointer', fontSize: '10px' }} title="Settings">
+                                            ⚙️
+                                        </div>
+                                    )}
+                                    {onRemoveIndicator && (
+                                        <div onClick={(e) => { e.stopPropagation(); onRemoveIndicator(iv.indicator) }} style={{ cursor: 'pointer', fontSize: '10px', color: t.red }} title="Remove">
+                                            ✕
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         ))}
                     </div>
                 </>

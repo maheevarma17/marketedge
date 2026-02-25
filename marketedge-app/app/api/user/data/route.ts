@@ -1,18 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import UserData from '@/lib/models/UserData'
-import { getUserIdFromHeader } from '@/lib/auth'
+import { getUserFromRequest } from '@/lib/auth'
+import { userDataSchema, validateBody } from '@/lib/validations'
+import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit'
 
 // GET: Load user's saved data
 export async function GET(req: NextRequest) {
     try {
-        const userId = getUserIdFromHeader(req.headers.get('authorization'))
-        if (!userId) {
+        const auth = getUserFromRequest(req)
+        if (!auth) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        // Rate limit
+        const rateCheck = checkRateLimit(`data:${auth.userId}`, RATE_LIMITS.userData)
+        if (!rateCheck.success) {
+            return NextResponse.json(
+                { error: 'Rate limit exceeded' },
+                { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfterSeconds) } }
+            )
+        }
+
         await connectDB()
-        const data = await UserData.findOne({ userId })
+        const data = await UserData.findOne({ userId: auth.userId })
         if (!data) {
             return NextResponse.json({
                 trades: [], alerts: [], journalEntries: [],
@@ -36,23 +47,39 @@ export async function GET(req: NextRequest) {
 // POST: Save/sync user's data
 export async function POST(req: NextRequest) {
     try {
-        const userId = getUserIdFromHeader(req.headers.get('authorization'))
-        if (!userId) {
+        const auth = getUserFromRequest(req)
+        if (!auth) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        // Rate limit
+        const rateCheck = checkRateLimit(`data:${auth.userId}`, RATE_LIMITS.userData)
+        if (!rateCheck.success) {
+            return NextResponse.json(
+                { error: 'Rate limit exceeded' },
+                { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfterSeconds) } }
+            )
+        }
+
+        // Validate input
         const body = await req.json()
+        const validation = validateBody(userDataSchema, body)
+        if (!validation.success) {
+            return NextResponse.json({ error: validation.error }, { status: 400 })
+        }
+        const validData = validation.data
+
         await connectDB()
 
         await UserData.findOneAndUpdate(
-            { userId },
+            { userId: auth.userId },
             {
                 $set: {
-                    ...(body.trades !== undefined && { trades: body.trades }),
-                    ...(body.alerts !== undefined && { alerts: body.alerts }),
-                    ...(body.journalEntries !== undefined && { journalEntries: body.journalEntries }),
-                    ...(body.watchlist !== undefined && { watchlist: body.watchlist }),
-                    ...(body.paperPortfolio !== undefined && { paperPortfolio: body.paperPortfolio }),
+                    ...(validData.trades !== undefined && { trades: validData.trades }),
+                    ...(validData.alerts !== undefined && { alerts: validData.alerts }),
+                    ...(validData.journalEntries !== undefined && { journalEntries: validData.journalEntries }),
+                    ...(validData.watchlist !== undefined && { watchlist: validData.watchlist }),
+                    ...(validData.paperPortfolio !== undefined && { paperPortfolio: validData.paperPortfolio }),
                     updatedAt: new Date(),
                 },
             },

@@ -22,8 +22,9 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password })
       })
       const data = await res.json()
-      if (data.token) {
-        localStorage.setItem('token', data.token)
+      if (res.ok && data.name) {
+        // Auth cookies are set automatically by the server (HTTP-only)
+        // Only store non-sensitive display name for UI
         localStorage.setItem('userName', data.name)
         router.push('/')
       } else {

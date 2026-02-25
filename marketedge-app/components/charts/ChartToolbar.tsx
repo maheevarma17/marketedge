@@ -35,6 +35,9 @@ interface ChartToolbarProps {
     onScreenshot: () => void
     onFullscreen: () => void
     isFullscreen: boolean
+    // Replay
+    isReplayMode: boolean
+    onToggleReplay: () => void
 }
 
 const RANGES = [
@@ -240,60 +243,6 @@ export default function ChartToolbar(props: ChartToolbarProps) {
                 )}
             </div>
 
-            {/* Drawing Tools Dropdown */}
-            <div style={{ position: 'relative' }} ref={drawingRef}>
-                <div onClick={() => { setShowDrawings(!showDrawings); setShowIndicators(false); setShowLayouts(false); setShowTemplates(false) }}
-                    style={{ ...btnBase(showDrawings || props.activeDrawingTool !== null), display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span>✏️</span>
-                    <span>Draw</span>
-                </div>
-
-                {showDrawings && (
-                    <div style={dropdownStyle}>
-                        {/* Cancel active tool */}
-                        {props.activeDrawingTool && (
-                            <div onClick={() => { props.onDrawingToolSelect(null); setShowDrawings(false) }}
-                                style={{ padding: '6px 8px', cursor: 'pointer', borderRadius: '4px', background: `${t.red}22`, color: t.red, fontSize: '11px', fontWeight: 600, marginBottom: '6px', textAlign: 'center' }}>
-                                ✕ Cancel Drawing
-                            </div>
-                        )}
-
-                        {(['line', 'fibonacci', 'shape', 'annotation', 'measure'] as const).map(cat => {
-                            const items = DRAWING_TOOLS.filter(dt => dt.category === cat)
-                            return (
-                                <div key={cat}>
-                                    <div style={{ fontSize: '9px', fontWeight: 700, color: t.textDim, padding: '3px 0', textTransform: 'uppercase', letterSpacing: '1px' }}>{cat}</div>
-                                    {items.map(tool => (
-                                        <div key={tool.type}
-                                            onClick={() => { props.onDrawingToolSelect(tool.type); setShowDrawings(false) }}
-                                            style={{
-                                                padding: '5px 8px', cursor: 'pointer', borderRadius: '4px',
-                                                display: 'flex', alignItems: 'center', gap: '8px',
-                                                background: props.activeDrawingTool === tool.type ? `${t.accent}22` : 'transparent',
-                                                marginBottom: '1px',
-                                            }}
-                                            onMouseEnter={e => e.currentTarget.style.background = `${t.border}`}
-                                            onMouseLeave={e => e.currentTarget.style.background = props.activeDrawingTool === tool.type ? `${t.accent}22` : 'transparent'}
-                                        >
-                                            <span style={{ fontSize: '14px' }}>{tool.icon}</span>
-                                            <div>
-                                                <div style={{ fontSize: '11px', fontWeight: 600, color: t.text }}>{tool.name}</div>
-                                                <div style={{ fontSize: '8px', color: t.textDim }}>{tool.description}</div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )
-                        })}
-
-                        <div style={{ borderTop: `1px solid ${t.border}`, marginTop: '6px', paddingTop: '6px', display: 'flex', gap: '4px' }}>
-                            <div onClick={props.onUndoDrawing} style={{ ...btnBase(), flex: 1, textAlign: 'center' }}>⟲ Undo</div>
-                            <div onClick={props.onClearDrawings} style={{ ...btnBase(), flex: 1, textAlign: 'center', color: t.red }}>🗑 Clear All</div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
             {/* Templates Dropdown */}
             <div style={{ position: 'relative' }} ref={templateRef}>
                 <div onClick={() => { setShowTemplates(!showTemplates); setShowIndicators(false); setShowDrawings(false); setShowLayouts(false) }}
@@ -355,6 +304,18 @@ export default function ChartToolbar(props: ChartToolbarProps) {
                         ))}
                     </div>
                 )}
+            </div>
+
+            <div style={{ width: '1px', height: '20px', background: t.border }} />
+
+            {/* Bar Replay Toggle */}
+            <div
+                onClick={props.onToggleReplay}
+                style={{ ...btnBase(props.isReplayMode), display: 'flex', alignItems: 'center', gap: '4px', color: props.isReplayMode ? '#fff' : t.text }}
+                title="Bar Replay Simulator"
+            >
+                <span>⏪</span>
+                <span>Replay</span>
             </div>
 
             {/* Right side actions */}
